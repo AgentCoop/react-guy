@@ -58,7 +58,10 @@ const debounceEventMap = new Map();
 // Default event handlers
 //
 function onRegisterDefault(event, details) {
-    const { target } = event;
+    const {
+        target,
+        payload: { value }
+    } = event;
     const root = target.getRoot();
     root.registerElement(target);
     if (target.isValueless()) {
@@ -66,7 +69,11 @@ function onRegisterDefault(event, details) {
         return;
     }
 
-    const { valueBag } = details;
+    let { valueBag } = details;
+    if (!valueBag) {
+        valueBag = {};
+        valueBag[target.getName()] = value;
+    }
     root.values = merge.recursive(true, root.values, valueBag);
     event[EVENT_ATTR_RESOLVE_CB]();
 }
@@ -351,7 +358,9 @@ function capturePhase(target, event, details) {
             .getEventListeners(event.type)
             .filter(({ options }) => options.useCapture)
             .forEach(({ handler, options }) => {
+                const { once } = options;
                 handler.call(node, event, details);
+                if (once) node.removeEventListener(handler);
             });
     });
 }

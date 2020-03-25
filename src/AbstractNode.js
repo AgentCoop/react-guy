@@ -61,13 +61,15 @@ class AbstractNode extends React.Component {
         else
             registeredListeners = this[NODE_REGISTERED_LISTENERS_ATTR].get(eventType);
         registeredListeners.push({ handler, options });
-        console.log("Add event", eventType, registeredListeners);
         this[NODE_REGISTERED_LISTENERS_ATTR].set(eventType, registeredListeners);
-        console.log(
-            this[NODE_REGISTERED_LISTENERS_ATTR].get(eventType),
-            eventType,
-            "d"
-        );
+    };
+
+    removeEventListener = handler => {
+        this[NODE_REGISTERED_LISTENERS_ATTR].forEach((listeners, eventType) => {
+            listeners.forEach((listener, index) => {
+                if (listener.handler === handler) listeners.splice(index, 1);
+            });
+        });
     };
 
     getEventListeners = eventType => {
@@ -190,9 +192,9 @@ class AbstractNode extends React.Component {
     };
 
     getDescendantsPath = (including = false) => {
-        const ancestors = this.getAncestorsPath(true);
+        const ancestors = this.getAncestorsPath(including);
         const descendants = ancestors.reverse();
-        return including ? descendants : descendants.slice(0, -1);
+        return descendants;
     };
 
     render(renderProps) {

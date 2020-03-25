@@ -14,7 +14,6 @@ class ElementGroup extends AbstractNode {
     patchValueBag = (event, details, value) => {
         const { target, currentNode } = event;
         const ns = currentNode.getNamespace(false);
-        console.log(target.getValue(), ns, "v");
         // Pass through value bag intact if the group does not specify any namespace
         if (!ns) return;
 
