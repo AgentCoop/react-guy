@@ -201,30 +201,30 @@ class AbstractNode extends React.Component {
         const { ChildComponent, parentContext = {} } = renderProps;
         return (
             <ParentNodeCtx.Consumer>
-            {({ parent, ...passThroughCtx }) => {
-            this[NODE_PARENT_NODE_ATTR] = parent;
-            this.nodeContext.parent = this;
-            if (this.getParentNode()) this.getParentNode().addChildNode(this);
+                {({ parent, ...passThroughCtx }) => {
+                    this[NODE_PARENT_NODE_ATTR] = parent;
+                    this.nodeContext.parent = this;
+                    if (this.getParentNode()) this.getParentNode().addChildNode(this);
 
-            for (let key of Object.keys(passThroughCtx)) {
-                this.nodeContext[key] = passThroughCtx[key];
-            }
-            // Overwrite
-            for (let key of Object.keys(parentContext)) {
-                if (typeof parentContext[key] === "undefined") continue;
-                this.nodeContext[key] = parentContext[key];
-            }
+                    for (let key of Object.keys(passThroughCtx)) {
+                        this.nodeContext[key] = passThroughCtx[key];
+                    }
+                    // Overwrite
+                    for (let key of Object.keys(parentContext)) {
+                        if (typeof parentContext[key] === "undefined") continue;
+                        this.nodeContext[key] = parentContext[key];
+                    }
 
-            return (
-                <ParentNodeCtx.Provider value={this.nodeContext}>
-                {typeof ChildComponent === "function"
-                        ? ChildComponent(this.props)
-                        : ChildComponent}
-                </ParentNodeCtx.Provider>
+                    return (
+                        <ParentNodeCtx.Provider value={this.nodeContext}>
+                            {typeof ChildComponent === "function"
+                                ? ChildComponent(this.props)
+                                : ChildComponent}
+                        </ParentNodeCtx.Provider>
+                    );
+                }}
+            </ParentNodeCtx.Consumer>
         );
-        }}
-    </ParentNodeCtx.Consumer>
-    );
     }
 }
 

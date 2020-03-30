@@ -392,9 +392,7 @@ function getEventHandler(event) {
 function createHandlerExecutor(
     asyncHandlerOrResult,
     forceSyncExec,
-    postExec = () => {
-        console.log("post");
-    }
+    postExec = () => {}
 ) {
     return (node, event, details) =>
         async function() {
@@ -422,9 +420,8 @@ function createHandlerExecutor(
             } finally {
                 postExec(node, event, details);
             }
-            return rejected
-                ? Promise.reject({ result, node })
-                : Promise.resolve({ result, node, event });
+            const resultBag = { result, node, event, details };
+            return rejected ? Promise.reject(resultBag) : Promise.resolve(resultBag);
         };
 }
 
@@ -461,7 +458,7 @@ async function capturePhase(target, event, details, forceSync = false) {
     return Promise.all(promises);
 }
 
-async function bubblePhase(target, event, details) {
+async function bubblePhase(target, event, details, forceSync = false) {
     if (isBubblingStopped(event)) return false;
     let p = target;
     do {
@@ -475,6 +472,34 @@ async function bubblePhase(target, event, details) {
                 event[EVENT_ATTR_DISCARD_CB](e); // Pass event
                 return false;
             }
+
+        // Invoke runtime event hadnlers
+        const promises = [];
+        p.getEventListeners(event.type).forEach(({ handler, options }) => {
+            const { once, sync } = options;
+            if (forceSync || sync) {
+                const pm = invokeAsyncEventHandler.call(p, event, details, handler);
+                promises.push(pm);
+            } else {
+                const pm = invokeAsyncEventHandlerDryRun.call(
+                    p,
+                    event,
+                    details,
+                    handler
+                );
+                promises.push(pm);
+            }
+            if (once) p.removeEventListener(handler);
+        });
+
+        if (promises.length) {
+            try {
+                await Promise.all(promises);
+            } catch (e) {
+                event[EVENT_ATTR_DISCARD_CB](e); // Pass event
+                return false;
+            }
+        }
 
         const handler = getEventHandler(event);
         if (!handler) continue;
@@ -514,19 +539,22 @@ export function dispatch(target, event) {
  */
 export async function dispatchSync(target, event) {
     event.target = target;
+    let error = null;
     const pm = new Promise(async function(resolve, reject) {
         const details = getEventDetails(target);
         event[EVENT_ATTR_RESOLVE_CB] = resolve;
         event[EVENT_ATTR_REJECT_CB] = reject;
         try {
             await capturePhase(target, event, details, true);
-            if (!bubblePhase(target, event, details)) {
+            if (!bubblePhase(target, event, details, true)) {
                 reject();
             }
         } catch (e) {
             console.log("cought error");
+            error = e;
         } finally {
             invokeDefaultEventHandler(event, details);
+            if (error) throw error;
         }
     });
 

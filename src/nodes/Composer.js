@@ -19,10 +19,12 @@ async function onFinalizeEvent(event, details, asyncCallbacks) {
     // Validate form data
     const promises = [];
     const asyncValidatorNodes = [];
+    let validFailed = false;
     this.traverseValuesTree(function(value, fqn) {
         const node = this.getElementByName(fqn);
         if (valueRequired(node) && isEmpty(node)) {
             node.setError({ validationErr: "required value" });
+            validFailed = true;
         } else if (node.props.validate) {
             const value = node.getValue();
             const asyncOrValue = node.props.validate(value);
@@ -33,6 +35,8 @@ async function onFinalizeEvent(event, details, asyncCallbacks) {
                 node.setError({ validationErr: asyncOrValue });
         }
     });
+
+    if (validFailed) return;
 
     const { resolve, reject } = asyncCallbacks;
     try {
@@ -53,7 +57,8 @@ async function onFinalizeEvent(event, details, asyncCallbacks) {
         });
         resolve();
     } catch (e) {
-        console.log(e.message, "<>");
+        const { node, result } = e;
+        node.setError({ validationErr: result });
         reject();
     } finally {
         // onAsyncVaidatorFinished
