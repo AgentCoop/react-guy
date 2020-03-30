@@ -7,6 +7,8 @@ import { ParentNodeCtx } from "../utils";
 
 import { NODE_TYPE_UI_ELEMENT, EVENT_TYPE_REGISTER } from "../events";
 
+const EL_PREV_VALUE = Symbol("el_prev_value");
+
 class UIElement extends AbstractNode {
     constructor(props) {
         super(props);
@@ -20,6 +22,7 @@ class UIElement extends AbstractNode {
                     : defaultValue;
         } else {
             this.state.value = defaultValue;
+            this[EL_PREV_VALUE] = null;
         }
         this.state.state = defaultState;
         this.state.errors = {};
@@ -49,7 +52,12 @@ class UIElement extends AbstractNode {
     };
 
     setValue = (value, onUpdated) => {
+        this[EL_PREV_VALUE] = this.state.value;
         this.setState({ value }, onUpdated);
+    };
+
+    getPrevValue = () => {
+        return this[EL_PREV_VALUE];
     };
 
     getState = () => {
@@ -127,21 +135,21 @@ export default function(props) {
     const { getComponentRef, ...rest } = props;
     return (
         <ParentNodeCtx.Consumer>
-        {({ initialValues, renderElementWrapper }) => {
-        const ElementComponent = (
-            <UIElement
-        ref={ref => getComponentRef && getComponentRef(ref)}
-        {...rest}
-        initialValues={initialValues}
-        />
+            {({ initialValues, renderElementWrapper }) => {
+                const ElementComponent = (
+                    <UIElement
+                        ref={ref => getComponentRef && getComponentRef(ref)}
+                        {...rest}
+                        initialValues={initialValues}
+                    />
+                );
+                if (renderElementWrapper)
+                    return renderElementWrapper({
+                        children: ElementComponent,
+                        name: props.name
+                    });
+                else return ElementComponent;
+            }}
+        </ParentNodeCtx.Consumer>
     );
-        if (renderElementWrapper)
-            return renderElementWrapper({
-                children: ElementComponent,
-                name: props.name
-            });
-        else return ElementComponent;
-    }}
-</ParentNodeCtx.Consumer>
-);
 }

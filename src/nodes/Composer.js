@@ -8,18 +8,64 @@ import {
     NODE_NEXT_SIBLING_ATTR,
     EVENT_TYPE_FINALIZE,
     valueRequired,
-    isEmpty
+    isEmpty,
+    runCustomValidator,
+    invokeEventHandlerByName,
+    EVENT_HANDLER_ON_ASYNC_VALIDATE_STARTED,
+    EVENT_HANDLER_ON_ASYNC_VALIDATE_FINISHED
 } from "../events";
 
-function onFinalizeEvent(event) {
+async function onFinalizeEvent(event, details, asyncCallbacks) {
     // Validate form data
+    const promises = [];
+    const asyncValidatorNodes = [];
     this.traverseValuesTree(function(value, fqn) {
-        const el = this.getElementByName(fqn);
-        if (valueRequired(el) && isEmpty(el)) {
-            el.setError({ required: "Required value" });
-            event.stopBubbling();
+        const node = this.getElementByName(fqn);
+        if (valueRequired(node) && isEmpty(node)) {
+            node.setError({ validationErr: "required value" });
+        } else if (node.props.validate) {
+            const value = node.getValue();
+            const asyncOrValue = node.props.validate(value);
+            if (typeof asyncOrValue === "function") {
+                asyncValidatorNodes.push(node);
+                promises.push(runCustomValidator(asyncOrValue, node, event));
+            } else if (asyncOrValue !== true)
+                node.setError({ validationErr: asyncOrValue });
         }
     });
+
+    const { resolve, reject } = asyncCallbacks;
+    try {
+        // onAsyncValidateStarted
+        asyncValidatorNodes.push(this);
+        asyncValidatorNodes.forEach(node => {
+            invokeEventHandlerByName(
+                node,
+                EVENT_HANDLER_ON_ASYNC_VALIDATE_STARTED,
+                event,
+                details
+            );
+        });
+        const results = await Promise.all(promises);
+        results.forEach(({ result, node }) => {
+            if (result === true) return;
+            node.setError({ validationErr: result });
+        });
+        resolve();
+    } catch (e) {
+        console.log(e.message, "<>");
+        reject();
+    } finally {
+        // onAsyncVaidatorFinished
+        asyncValidatorNodes.forEach(node => {
+            invokeEventHandlerByName(
+                node,
+                EVENT_HANDLER_ON_ASYNC_VALIDATE_FINISHED,
+                event,
+                details
+            );
+        });
+    }
 }
 
 class Composer extends AbstractNode {
@@ -34,7 +80,8 @@ class Composer extends AbstractNode {
 
         this.addEventListener(EVENT_TYPE_FINALIZE, onFinalizeEvent, {
             useCapture: true,
-            once: false
+            once: false,
+            sync: true
         });
     }
 
@@ -80,7 +127,11 @@ class Composer extends AbstractNode {
                 if (typeof root[key] === "object") {
                     traverse(root[key], fqn);
                 } else {
-                    cb.call(this, root[key], fqn);
+                    try {
+                        cb.call(this, root[key], fqn);
+                    } catch (e) {
+                        console.log("reject");
+                    }
                 }
             }
         };

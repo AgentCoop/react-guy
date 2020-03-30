@@ -22,7 +22,7 @@ export const EVENT_TYPE_NEW_VALUE = Symbol("new_value");
 export const EVENT_TYPE_STATE_CHANGED = Symbol("state_changed");
 export const EVENT_TYPE_CLEAR_ERRORS = Symbol("clear_errors");
 export const EVENT_TYPE_RESET = Symbol("reset");
-export const EVENT_TYPE_FINALIZE = 12; //Symbol("finalize");
+export const EVENT_TYPE_FINALIZE = Symbol("finalize");
 
 const EVENT_ATTR_PREVENT_DEFAULT = Symbol("prevent_default");
 const EVENT_ATTR_STOP_BUBBLING = Symbol("stop_bubbling");
@@ -32,6 +32,10 @@ const EVENT_ATTR_DISCARD_CB = Symbol("discard_cb");
 const EVENT_ATTR_RESOLVE_CB = Symbol("resolve_cb");
 const EVENT_ATTR_REJECT_CB = Symbol("reject_cb");
 
+export const EVENT_HANDLER_ON_ASYNC_VALIDATE_STARTED = "onAsyncValidateStarted";
+export const EVENT_HANDLER_ON_ASYNC_VALIDATE_FINISHED =
+    "onAsyncValidateFinished";
+
 export const isElement = node => node.getType() === NODE_TYPE_UI_ELEMENT;
 export const valueRequired = el => el.props.required;
 export const isEmpty = el => {
@@ -40,6 +44,15 @@ export const isEmpty = el => {
         return value.length ? false : true;
     else return false;
 };
+
+export async function runCustomValidator(validator, node, event, details) {
+    const executor = createHandlerExecutor(validator, true);
+    return executor(node, event, details)();
+}
+
+function asyncHandler(result) {
+    return typeof result === "function" || typeof result === "array";
+}
 
 const eventTypeToPropNameMap = {
     [EVENT_TYPE_REGISTER]: "onRegister",
@@ -112,27 +125,13 @@ function onResetDefault(event, details) {
     root.registeredElements.forEach(el => el.reset());
 }
 
-function onFinalizeDefault(event, details) {
-    // const { target } = event;
-    // const root = target.getRoot();
-    // root.traverseValuesTree(function(value, fqn) {
-    //   const el = root.getElementByName(fqn);
-    //   if (valueRequired(el) && isEmpty(el)) {
-    //     el.setError({ required: "Required value" });
-    //     event.preventDefault();
-    //   }
-    // });
-}
-
 // default event handlers
-
 export const defaultBehaviourMap = {
     [EVENT_TYPE_REGISTER]: onRegisterDefault,
     [EVENT_TYPE_NEW_VALUE]: onNewValueDefault,
     [EVENT_TYPE_VALUE_CHANGED]: onValueChangedDefault,
     [EVENT_TYPE_STATE_CHANGED]: onStateChangedDefault,
-    [EVENT_TYPE_RESET]: onResetDefault,
-    [EVENT_TYPE_FINALIZE]: onFinalizeDefault
+    [EVENT_TYPE_RESET]: onResetDefault
 };
 
 export function defaultIsPrevented(event) {
@@ -283,14 +282,30 @@ function throttleDebouncePm(event, pmGenerator, nodeId, map, specs) {
     return pm();
 }
 
-export function invokeAsyncEventHandler(event, details, handlerObj) {
+function invokeAsyncEventHandlerDryRun(event, details, handlerObj) {
+    if (typeof handlerObj === "function") {
+        handlerObj = [handlerObj];
+    }
+    const dummyPromiseCallbacks = {
+        resolve: function() {},
+        reject: function() {}
+    };
+    handlerObj.forEach(handler => {
+        addResult.call(event, handler(event, details, dummyPromiseCallbacks));
+    });
+
+    return Promise.resolve(event);
+}
+
+export async function invokeAsyncEventHandler(event, details, handlerObj) {
+    const ctx = this;
     const promiseFn = handler =>
         function(resolve, reject) {
             function resolveWrapper(result) {
-                resolve();
+                resolve(result);
                 addResult.call(event, result);
             }
-            handler(event, details, { resolve: resolveWrapper, reject });
+            handler.call(ctx, event, details, { resolve: resolveWrapper, reject });
         };
 
     if (typeof handlerObj === "function") {
@@ -336,6 +351,30 @@ function getEventDetails(target) {
     return details;
 }
 
+export function getEventHandlerByName(node, name) {
+    if (typeof node[name] === "function") {
+        return node[name];
+    } else if (typeof node.props[name] === "function") {
+        return node.props[name];
+    } else {
+        invariant(false, "Failed to retrieve event handler of %s", name);
+    }
+}
+
+export function findEventHandlerByName(node, name) {
+    try {
+        return getEventHandlerByName(node, name);
+    } catch (e) {
+        return null;
+    }
+}
+
+export function invokeEventHandlerByName(node, name, event, details) {
+    const handler = findEventHandlerByName(node, name);
+    if (!handler) return null;
+    return handler.call(node, event, details);
+}
+
 function getEventHandler(event) {
     const { currentNode, type } = event;
     const propName = eventTypeToPropNameMap[type];
@@ -350,19 +389,76 @@ function getEventHandler(event) {
     return handler;
 }
 
-function capturePhase(target, event, details) {
+function createHandlerExecutor(
+    asyncHandlerOrResult,
+    forceSyncExec,
+    postExec = () => {
+        console.log("post");
+    }
+) {
+    return (node, event, details) =>
+        async function() {
+            let rejected = false;
+            let result;
+            try {
+                if (asyncHandler(asyncHandlerOrResult)) {
+                    if (forceSyncExec)
+                        result = await invokeAsyncEventHandler(
+                            event,
+                            details,
+                            asyncHandlerOrResult
+                        );
+                    else
+                        result = await invokeAsyncEventHandlerDryRun(
+                            event,
+                            details,
+                            asyncHandlerOrResult
+                        );
+                } else result = asyncHandlerOrResult;
+            } catch (error) {
+                console.log("rejected", error);
+                result = error;
+                rejected = true;
+            } finally {
+                postExec(node, event, details);
+            }
+            return rejected
+                ? Promise.reject({ result, node })
+                : Promise.resolve({ result, node, event });
+        };
+}
+
+async function capturePhase(target, event, details, forceSync = false) {
     // The path from the root node to the target one not including itself
     const descendants = target.getDescendantsPath(false);
-    descendants.forEach(node => {
+    const promises = [];
+    descendants.forEach(function(node) {
         node
             .getEventListeners(event.type)
             .filter(({ options }) => options.useCapture)
             .forEach(({ handler, options }) => {
-                const { once } = options;
-                handler.call(node, event, details);
+                const { once, sync } = options;
+                if (forceSync || sync) {
+                    const pm = invokeAsyncEventHandler.call(
+                        node,
+                        event,
+                        details,
+                        handler
+                    );
+                    promises.push(pm);
+                } else {
+                    const pm = invokeAsyncEventHandlerDryRun.call(
+                        node,
+                        event,
+                        details,
+                        handler
+                    );
+                    promises.push(pm);
+                }
                 if (once) node.removeEventListener(handler);
             });
     });
+    return Promise.all(promises);
 }
 
 async function bubblePhase(target, event, details) {
@@ -416,17 +512,22 @@ export function dispatch(target, event) {
  * Dispatches an event and awaits until the event will be handled or discarded
  * @returns {Promise}
  */
-export function dispatchSync(target, event) {
+export async function dispatchSync(target, event) {
     event.target = target;
-    const pm = new Promise(function(resolve, reject) {
+    const pm = new Promise(async function(resolve, reject) {
         const details = getEventDetails(target);
         event[EVENT_ATTR_RESOLVE_CB] = resolve;
         event[EVENT_ATTR_REJECT_CB] = reject;
-        capturePhase(target, event, details);
-        if (!bubblePhase(target, event, details)) {
-            reject();
+        try {
+            await capturePhase(target, event, details, true);
+            if (!bubblePhase(target, event, details)) {
+                reject();
+            }
+        } catch (e) {
+            console.log("cought error");
+        } finally {
+            invokeDefaultEventHandler(event, details);
         }
-        invokeDefaultEventHandler(event, details);
     });
 
     return pm;
