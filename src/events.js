@@ -24,17 +24,18 @@ export const EVENT_TYPE_CLEAR_ERRORS = Symbol("clear_errors");
 export const EVENT_TYPE_RESET = Symbol("reset");
 export const EVENT_TYPE_FINALIZE = Symbol("finalize");
 
-const EVENT_ATTR_PREVENT_DEFAULT = Symbol("prevent_default");
-const EVENT_ATTR_STOP_BUBBLING = Symbol("stop_bubbling");
-const EVENT_ATTR_CREATED_AT = Symbol("created_at");
-const EVENT_ATTR_RESULTS = Symbol("results");
-const EVENT_ATTR_DISCARD_CB = Symbol("discard_cb");
-const EVENT_ATTR_RESOLVE_CB = Symbol("resolve_cb");
-const EVENT_ATTR_REJECT_CB = Symbol("reject_cb");
+export const EVENT_ATTR_PREVENT_DEFAULT = Symbol("prevent_default");
+export const EVENT_ATTR_STOP_BUBBLING = Symbol("stop_bubbling");
+export const EVENT_ATTR_CREATED_AT = Symbol("created_at");
+export const EVENT_ATTR_RESULTS = Symbol("results");
+export const EVENT_ATTR_DISCARD_CB = Symbol("discard_cb");
+export const EVENT_ATTR_RESOLVE_CB = Symbol("resolve_cb");
+export const EVENT_ATTR_REJECT_CB = Symbol("reject_cb");
 
 export const EVENT_HANDLER_ON_ASYNC_VALIDATE_STARTED = "onAsyncValidateStarted";
 export const EVENT_HANDLER_ON_ASYNC_VALIDATE_FINISHED =
     "onAsyncValidateFinished";
+export const EVENT_HANDLER_ON_VALUE_CHANGED = "onValueChanged";
 
 export const isElement = node => node.getType() === NODE_TYPE_UI_ELEMENT;
 export const valueRequired = el => el.props.required;
@@ -94,6 +95,7 @@ function onRegisterDefault(event, details) {
 function onNewValueDefault(event, details) {
     const { target, payload } = event;
     let { valueBag } = details;
+    console.log("values", valueBag);
     target.setValue(payload, function() {
         if (event[EVENT_ATTR_RESOLVE_CB]) event[EVENT_ATTR_RESOLVE_CB]();
     });
@@ -129,7 +131,7 @@ function onResetDefault(event, details) {
 export const defaultBehaviourMap = {
     [EVENT_TYPE_REGISTER]: onRegisterDefault,
     [EVENT_TYPE_NEW_VALUE]: onNewValueDefault,
-    [EVENT_TYPE_VALUE_CHANGED]: onValueChangedDefault,
+    //[EVENT_TYPE_VALUE_CHANGED]: onValueChangedDefault,
     [EVENT_TYPE_STATE_CHANGED]: onStateChangedDefault,
     [EVENT_TYPE_RESET]: onResetDefault
 };
@@ -291,10 +293,28 @@ function invokeAsyncEventHandlerDryRun(event, details, handlerObj) {
         reject: function() {}
     };
     handlerObj.forEach(handler => {
-        addResult.call(event, handler(event, details, dummyPromiseCallbacks));
+        const clonedEvent = cloneEvent(event);
+        thread(() => {
+            const result = handler(clonedEvent, details, dummyPromiseCallbacks);
+            addResult.call(clonedEvent, result);
+        });
     });
+}
 
-    return Promise.resolve(event);
+function promisifyHandler(handler) {
+    const ctx = this;
+    return (event, details) =>
+        new Promise(function(resolve, reject) {
+            function resolveWrapper(result) {
+                resolve(result);
+                addResult.call(event, result);
+            }
+            const clonedEvent = cloneEvent(event);
+            handler.call(ctx, clonedEvent, details, {
+                resolve: resolveWrapper,
+                reject
+            });
+        });
 }
 
 export async function invokeAsyncEventHandler(event, details, handlerObj) {
@@ -305,7 +325,11 @@ export async function invokeAsyncEventHandler(event, details, handlerObj) {
                 resolve(result);
                 addResult.call(event, result);
             }
-            handler.call(ctx, event, details, { resolve: resolveWrapper, reject });
+            const clonedEvent = cloneEvent(event);
+            handler.call(ctx, clonedEvent, details, {
+                resolve: resolveWrapper,
+                reject
+            });
         };
 
     if (typeof handlerObj === "function") {
@@ -377,50 +401,48 @@ export function invokeEventHandlerByName(node, name, event, details) {
 
 function getEventHandler(event) {
     const { currentNode, type } = event;
-    const propName = eventTypeToPropNameMap[type];
-    let handler;
-
-    if (typeof currentNode[propName] !== "undefined") {
-        handler = currentNode[propName];
-    } else if (typeof currentNode.props[propName] !== "undefined") {
-        handler = currentNode.props[propName];
-    }
-
-    return handler;
+    const handlerName = eventTypeToPropNameMap[type];
+    return findEventHandlerByName(currentNode, handlerName);
 }
 
 function createHandlerExecutor(
     asyncHandlerOrResult,
-    forceSyncExec,
+    sync,
     postExec = () => {}
 ) {
     return (node, event, details) =>
         async function() {
             let rejected = false;
             let result;
+            let resultBag;
             try {
                 if (asyncHandler(asyncHandlerOrResult)) {
-                    if (forceSyncExec)
-                        result = await invokeAsyncEventHandler(
+                    if (sync)
+                        result = await invokeAsyncEventHandler.call(
+                            node,
                             event,
                             details,
                             asyncHandlerOrResult
                         );
-                    else
-                        result = await invokeAsyncEventHandlerDryRun(
+                    else {
+                        result = Promise.resolve(null);
+                        invokeAsyncEventHandlerDryRun.call(
+                            node,
                             event,
                             details,
                             asyncHandlerOrResult
                         );
+                    }
                 } else result = asyncHandlerOrResult;
             } catch (error) {
-                console.log("rejected", error);
+                console.log("rejected", error.message);
                 result = error;
                 rejected = true;
             } finally {
-                postExec(node, event, details);
+                resultBag = { result, node, event, details };
+                postExec(resultBag, rejected);
             }
-            const resultBag = { result, node, event, details };
+
             return rejected ? Promise.reject(resultBag) : Promise.resolve(resultBag);
         };
 }
@@ -458,79 +480,84 @@ async function capturePhase(target, event, details, forceSync = false) {
     return Promise.all(promises);
 }
 
+function thread(cb) {
+    setTimeout(cb, 0);
+}
+
+async function invokeNodeEventHandlers(node, event, details) {
+    // Invoke runtime event hadnlers
+    const promises = [];
+    const listeners = node.getEventListeners(event.type);
+    const handler = getEventHandler(event);
+    if (handler)
+        listeners.push({
+            handler,
+            options: {
+                once: false,
+                useCapture: false
+            }
+        });
+
+    listeners.forEach(({ handler, options }) => {
+        const { once, sync } = options;
+        let pm;
+        if (sync) {
+            pm = promisifyHandler.call(node, handler)(event, details);
+        } else {
+            const asyncHandlerOrResult = handler.call(node, event, details);
+            const executor = createHandlerExecutor(asyncHandlerOrResult, sync);
+            pm = executor(node, event, details)();
+        }
+        promises.push(pm);
+        if (once) node.removeEventListener(handler);
+    });
+
+    if (promises.length) {
+        try {
+            await Promise.all(promises);
+        } catch (e) {
+            console.log("cought error2", e);
+            event[EVENT_ATTR_DISCARD_CB](e); // Pass event
+            throw e;
+        }
+    }
+}
+
 async function bubblePhase(target, event, details, forceSync = false) {
-    if (isBubblingStopped(event)) return false;
+    if (isBubblingStopped(event)) return Promise.resolve(false);
     let p = target;
     do {
         event.currentNode = p;
-
         const debounceThrottlePm = getDebounceThrottlePromise(event);
         if (debounceThrottlePm)
             try {
                 await debounceThrottlePm;
             } catch (e) {
                 event[EVENT_ATTR_DISCARD_CB](e); // Pass event
-                return false;
+                return Promise.resolve(false);
             }
 
-        // Invoke runtime event hadnlers
-        const promises = [];
-        p.getEventListeners(event.type).forEach(({ handler, options }) => {
-            const { once, sync } = options;
-            if (forceSync || sync) {
-                const pm = invokeAsyncEventHandler.call(p, event, details, handler);
-                promises.push(pm);
-            } else {
-                const pm = invokeAsyncEventHandlerDryRun.call(
-                    p,
-                    event,
-                    details,
-                    handler
-                );
-                promises.push(pm);
-            }
-            if (once) p.removeEventListener(handler);
-        });
+        invokeNodeEventHandlers(p, event, details);
 
-        if (promises.length) {
-            try {
-                await Promise.all(promises);
-            } catch (e) {
-                event[EVENT_ATTR_DISCARD_CB](e); // Pass event
-                return false;
-            }
-        }
-
-        const handler = getEventHandler(event);
-        if (!handler) continue;
-        const result = handler(event, details);
-        addResult.call(event, result);
-
-        const asyncCall =
-            typeof result === "function" ||
-            (typeof result === "array" && typeof result[0] === "function");
-
-        if (asyncCall) {
-            try {
-                await invokeAsyncEventHandler(event, details, result);
-            } catch (e) {
-                event[EVENT_ATTR_DISCARD_CB]();
-                return false;
-            }
-        }
-
-        if (isBubblingStopped(event)) return false;
+        if (isBubblingStopped(event)) return Promise.reject(false);
     } while ((p = p.getParentNode()));
 
-    return true;
+    return Promise.resolve(true);
 }
 
-export function dispatch(target, event) {
+export async function dispatch(target, event) {
     event.target = target;
     const details = getEventDetails(target);
-    capturePhase(target, event, details);
-    bubblePhase(target, event, details);
-    invokeDefaultEventHandler(event, details);
+    try {
+        await capturePhase(target, event, details);
+        await bubblePhase(target, event, details);
+    } catch (e) {
+        console.log("Cought error", e);
+        /* ... */
+    } finally {
+        const root = target.getRoot();
+        invokeDefaultEventHandler.call(root, event, details);
+    }
 }
 
 /**
@@ -546,14 +573,13 @@ export async function dispatchSync(target, event) {
         event[EVENT_ATTR_REJECT_CB] = reject;
         try {
             await capturePhase(target, event, details, true);
-            if (!bubblePhase(target, event, details, true)) {
-                reject();
-            }
+            await bubblePhase(target, event, details, true);
         } catch (e) {
             console.log("cought error");
             error = e;
         } finally {
-            invokeDefaultEventHandler(event, details);
+            const root = target.getRoot();
+            invokeDefaultEventHandler.call(root, event, details);
             if (error) throw error;
         }
     });

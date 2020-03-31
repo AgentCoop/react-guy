@@ -12,14 +12,24 @@ import {
     runCustomValidator,
     invokeEventHandlerByName,
     EVENT_HANDLER_ON_ASYNC_VALIDATE_STARTED,
-    EVENT_HANDLER_ON_ASYNC_VALIDATE_FINISHED
+    EVENT_HANDLER_ON_ASYNC_VALIDATE_FINISHED,
+    EVENT_ATTR_RESOLVE_CB,
+    EVENT_TYPE_VALUE_CHANGED
 } from "../events";
+
+function onValueChanged(event, details) {
+    const { target, payload } = event;
+    target.setValue(payload, function() {
+        if (event[EVENT_ATTR_RESOLVE_CB]) event[EVENT_ATTR_RESOLVE_CB]();
+    });
+}
 
 async function onFinalizeEvent(event, details, asyncCallbacks) {
     // Validate form data
     const promises = [];
     const asyncValidatorNodes = [];
     let validFailed = false;
+    console.log("this", this);
     this.traverseValuesTree(function(value, fqn) {
         const node = this.getElementByName(fqn);
         if (valueRequired(node) && isEmpty(node)) {
@@ -85,8 +95,10 @@ class Composer extends AbstractNode {
 
         this.addEventListener(EVENT_TYPE_FINALIZE, onFinalizeEvent, {
             useCapture: true,
-            once: false,
             sync: true
+        });
+        this.addEventListener(EVENT_TYPE_VALUE_CHANGED, onValueChanged, {
+            useCapture: true
         });
     }
 
