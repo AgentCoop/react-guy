@@ -29,7 +29,6 @@ async function onFinalizeEvent(event, details, asyncCallbacks) {
     const promises = [];
     const asyncValidatorNodes = [];
     let validFailed = false;
-    console.log("this", this);
     this.traverseValuesTree(function(value, fqn) {
         const node = this.getElementByName(fqn);
         if (valueRequired(node) && isEmpty(node)) {

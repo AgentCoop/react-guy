@@ -1,6 +1,6 @@
 import React from "react";
 
-import { ParentNodeCtx } from "./utils";
+import { ParentNodeCtx, findNodesByAttrValue } from "./utils";
 
 import {
     createEvent,
@@ -17,6 +17,7 @@ import {
 
 import Collection from "./Collection";
 
+const NODE_CLASS_ATTR = Symbol("node_class_attr");
 const REGISTERED_LISTENERS_ATTR = Symbol("registered_listeners");
 
 class AbstractNode extends React.Component {
@@ -37,6 +38,7 @@ class AbstractNode extends React.Component {
         this[NODE_NEXT_SIBLING_ATTR] = null;
         this[NODE_PREV_SIBLING_ATTR] = null;
         this[NODE_REGISTERED_LISTENERS_ATTR] = new Map();
+        this[NODE_CLASS_ATTR] = props._class;
 
         this.createEvent = createEvent;
         this.dispatch = event => {
@@ -60,7 +62,7 @@ class AbstractNode extends React.Component {
             registeredListeners = [];
         else
             registeredListeners = this[NODE_REGISTERED_LISTENERS_ATTR].get(eventType);
-        registeredListeners.push({ handler, options });
+        registeredListeners.push({ handler: handler.bind(this), options });
         this[NODE_REGISTERED_LISTENERS_ATTR].set(eventType, registeredListeners);
     };
 
@@ -70,6 +72,10 @@ class AbstractNode extends React.Component {
                 if (listener.handler === handler) listeners.splice(index, 1);
             });
         });
+    };
+
+    getClass = () => {
+        return this[NODE_CLASS_ATTR];
     };
 
     getEventListeners = eventType => {
@@ -179,6 +185,11 @@ class AbstractNode extends React.Component {
         }
         traverse(this);
         return new Collection(results);
+    };
+
+    findByClass = (_class, except = []) => {
+        const nodes = findNodesByAttrValue(NODE_CLASS_ATTR, _class, this, except);
+        return new Collection(nodes);
     };
 
     getAncestorsPath = (including = false) => {

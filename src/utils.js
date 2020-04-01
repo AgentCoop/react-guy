@@ -14,3 +14,17 @@ export function patchDetailsValueBag(details, name, value, namespace) {
     const newValueBag = namespacedValue(details.valueBag, name, value, namespace);
     details.valueBag = newValueBag;
 }
+
+export function findNodesByAttrValue(attr, value, root, except = []) {
+    const results = [];
+    function traverse(root) {
+        for (let child of root.getChildNodes()) {
+            traverse(child);
+        }
+        if (root[attr] === value && !except.includes(root)) {
+            results.push(root);
+        }
+    }
+    traverse(root);
+    return results;
+}

@@ -367,11 +367,8 @@ function getDebounceThrottlePromise(event) {
 }
 
 function getEventDetails(target) {
-    const sourceSiblings = new Collection(target.getSiblings());
-    const details = {
-        sourceSiblings
-    };
-
+    const targetSiblings = new Collection(target.getSiblings());
+    const details = { targetSiblings };
     return details;
 }
 

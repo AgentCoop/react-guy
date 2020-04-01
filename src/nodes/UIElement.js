@@ -12,8 +12,8 @@ const EL_PREV_VALUE = Symbol("el_prev_value");
 class UIElement extends AbstractNode {
     constructor(props) {
         super(props);
-        this.$type = NODE_TYPE_UI_ELEMENT;
         const { name, defaultValue, defaultState = {}, initialValues } = props;
+        this.$type = NODE_TYPE_UI_ELEMENT;
 
         if (!this.isValueless()) {
             this.state.value =
