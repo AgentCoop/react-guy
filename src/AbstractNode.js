@@ -86,6 +86,7 @@ class AbstractNode extends React.Component {
     traverseTree = (root, cb) => {
         function traverse(parent) {
             let prevSibling, nextSibling;
+            console.log(parent, 'parent')
             const childs = parent.getChildNodes(),
                 len = childs.length;
             for (let i = 0; i < len; i++) {
@@ -159,7 +160,7 @@ class AbstractNode extends React.Component {
     };
 
     getChildNodes = () => {
-        return [...this[NODE_CHILDS_ATTR].values()];
+        return Array.from(this[NODE_CHILDS_ATTR].values());
     };
 
     getPrevSibling = () => {
