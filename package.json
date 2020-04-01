@@ -1,0 +1,108 @@
+{
+  "name": "react-guy-composer",
+  "version": "1.0.0",
+  "description": "An event-driven approach to handle components state",
+  "main": "./lib/index.js",
+  "module": "./es/index.js",
+  "modules.root": "./es",
+  "jsnext:main": "./es/index.js",
+  "sideEffects": false,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/AgentCoop/react-guy-composer"
+  },
+  "scripts": {
+    "analyze": "webpack src/index.js dist/react-guy-composer.js -p --bail --profile --json > stats.json && webpack-bundle-analyzer stats.json",
+    "build": "npm run clean && npm run build:lib && npm run build:es && npm run build:umd && npm run build:umd:min",
+    "build:lib": "babel src --out-dir lib --ignore \"src/**/__tests__\"",
+    "build:es": "cross-env BABEL_ENV=es babel src --out-dir es --ignore \"src/**/__tests__\"",
+    "build:umd": "cross-env NODE_ENV=development webpack src/index.js -o dist/react-guy-composer.js",
+    "build:umd:min": "cross-env NODE_ENV=production webpack src/index.js -o dist/react-guy-composer.min.js",
+    "clean": "rimraf dist lib es",
+    "lint": "eslint src",
+    "prepublishOnly": "npm run lint && npm run test:cov && npm run test:flow && npm run clean && npm run build",
+    "validate": "npm run lint && npm run test:cov && npm run test:flow && npm run clean && npm run build && size-limit",
+    "test": "cross-env NODE_ENV=test jest src --runInBand",
+    "test:flow": "node scripts/patch-immutable-flow-error.js && flow check",
+    "test:watch": "npm test -- --watch",
+    "test:cov": "npm run test -- --coverage"
+  },
+  "keywords": [
+    "react",
+    "reactjs"
+  ],
+  "author": "Andrei Samuilik <a.samuylik@gmail.com> (https://github.com/AgentCoop)",
+  "license": "MIT",
+  "dependencies": {
+    "@babel/runtime": "^7.9.2",
+    "invariant": "^2.2.4",
+    "merge": "^1.2.1"
+  },
+  "devDependencies": {
+    "@babel/cli": "^7.8.4",
+    "@babel/core": "^7.9.0",
+    "@babel/plugin-proposal-class-properties": "^7.8.3",
+    "@babel/plugin-proposal-decorators": "^7.8.3",
+    "@babel/plugin-syntax-import-meta": "^7.8.3",
+    "@babel/plugin-transform-modules-commonjs": "^7.9.0",
+    "@babel/plugin-transform-runtime": "^7.9.0",
+    "@babel/preset-env": "^7.9.0",
+    "@babel/preset-flow": "^7.9.0",
+    "@babel/preset-react": "^7.9.4",
+    "babel-eslint": "^10.1.0",
+    "babel-loader": "^8.1.0",
+    "cross-env": "^7.0.2",
+    "eslint": "^6.8.0",
+    "husky": "^4.2.3",
+    "lint-staged": "^10.1.1",
+    "react": "^16.13.1",
+    "react-dom": "^16.13.1",
+    "webpack": "^4.42.1",
+    "webpack-bundle-analyzer": "^3.6.1",
+    "webpack-cli": "^3.3.11"
+  },
+  "peerDependencies": {
+    "react": "^16.13.0"
+  },
+  "peerDependenciesMeta": {
+    "immutable": {
+      "optional": true
+    }
+  },
+  "files": [
+    "README.md",
+    "es",
+    "lib",
+    "dist",
+    "immutable.js",
+    "*.js.flow"
+  ],
+  "lint-staged": {
+    "*.{js,json,md,css}": [
+      "prettier --write",
+      "git add"
+    ]
+  },
+  "jest": {
+    "collectCoverageFrom": [
+      "src/**/*.js",
+      "!src/**/__tests__/**/*.js"
+    ],
+    "coverageReporters": [
+      "text",
+      "lcov",
+      "html"
+    ],
+    "coveragePathIgnorePatterns": [
+      "/node_modules/",
+      "/dist/"
+    ],
+    "testRegex": "__tests__/.*\\.spec\\.js$",
+    "testEnvironment": "jsdom"
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "lint-staged"
+    }
+  }
+}
