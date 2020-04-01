@@ -1,0 +1,19 @@
+{
+  "extends": ["react-app", "plugin:import/errors", "plugin:import/warnings"],
+  "rules": {
+    "jsx-a11y/href-no-hash": 0,
+    "semi": ["error", "always"],
+    "import/no-unresolved": 0,
+    "import/no-extraneous-dependencies": [
+      "error",
+      {
+        "devDependencies": ["**/__tests__/**/*.js"],
+        "optionalDependencies": [],
+        "peerDependencies": false
+      }
+    ]
+  },
+  "settings": {
+    "import/resolver": "webpack"
+  }
+}
