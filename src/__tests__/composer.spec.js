@@ -1,6 +1,5 @@
 import React from 'react';
-//import renderer from 'react-test-renderer';
-import {cleanup, fireEvent, render} from '@testing-library/react';
+import {fireEvent, render} from '@testing-library/react';
 
 import {
     Composer,
@@ -34,7 +33,6 @@ function Password() {
             required
             onNewValue={function(event) {
                 const { payload } = event;
-                console.log('newValue', payload);
             }}
             onValueChanged={function(event) {
                 ///console.log(event.)

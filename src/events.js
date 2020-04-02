@@ -110,7 +110,6 @@ function onRegisterDefault(event, details) {
         valueBag = {};
         valueBag[target.getName()] = value;
     }
-    console.log('register', valueBag)
     root.values = merge.recursive(true, root.values, valueBag);
     event[EVENT_ATTR_RESOLVE_CB] && event[EVENT_ATTR_RESOLVE_CB]();
 }
@@ -118,7 +117,6 @@ function onRegisterDefault(event, details) {
 function onNewValueDefault(event, details) {
     const { target, payload } = event;
     let { valueBag } = details;
-    console.log("values", payload);
     target.setValue(payload, function() {
         if (event[EVENT_ATTR_RESOLVE_CB]) event[EVENT_ATTR_RESOLVE_CB]();
     });
@@ -128,7 +126,6 @@ function onNewValueDefault(event, details) {
         valueBag[target.getName()] = payload;
     }
     root.values = merge.recursive(true, root.values, valueBag);
-    console.log('root', root.values)
 }
 
 function onValueChangedDefault(event, details) {
@@ -485,7 +482,7 @@ async function bubblePhase(target, event, details, forceSync = false) {
     return Promise.resolve(true);
 }
 
-export async function dispatch(target, event, async) {
+export async function dispatch(target, event, suppressDiscarded = true) {
     event.target = target;
     const details = getEventDetails(target);
     const root = target.getRoot();
@@ -497,7 +494,7 @@ export async function dispatch(target, event, async) {
         await invokeEventHandlerByName(root, EVENT_HANDLER_ON_PROPAGATION_FINISHED, event, details);
     } catch (e) {
         console.log(e, 'error')
-        if (async)
+        if (suppressDiscarded)
             return Promise.resolve(false);
         else
             return Promise.reject(e);

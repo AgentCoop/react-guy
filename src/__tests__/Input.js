@@ -24,7 +24,6 @@ export default function Input(props) {
                             id={name}
                             type={type}
                             onBlur={e => {
-                                console.log('blur', e.target.value, 'd');
                                 dispatch(EVENT_TYPE_NEW_VALUE, e.target.value);
                             }}
                             onFocus={e => {

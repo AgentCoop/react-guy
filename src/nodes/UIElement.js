@@ -36,7 +36,6 @@ class UIElement extends AbstractNode {
     }
 
     componentDidMount() {
-        console.log("register event");
         this.dispatch(this.createRegisterEvent(), false);
     }
 
