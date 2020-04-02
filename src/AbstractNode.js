@@ -41,11 +41,8 @@ class AbstractNode extends React.Component {
         this[NODE_CLASS_ATTR] = props._class;
 
         this.createEvent = createEvent;
-        this.dispatch = event => {
-            return dispatch(this, event);
-        };
-        this.dispatchSync = event => {
-            return dispatchSync(this, event);
+        this.dispatch = (event, async) => {
+            return dispatch(this, event, async);
         };
         this.nodeContext = {};
         this.namespace =
@@ -86,7 +83,6 @@ class AbstractNode extends React.Component {
     traverseTree = (root, cb) => {
         function traverse(parent) {
             let prevSibling, nextSibling;
-            console.log(parent, 'parent')
             const childs = parent.getChildNodes(),
                 len = childs.length;
             for (let i = 0; i < len; i++) {

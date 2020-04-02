@@ -13,10 +13,11 @@ module.exports = {
             }
         ],
         '@babel/preset-react',
-        '@babel/preset-flow'
+        //'@babel/preset-flow'
     ],
     plugins: [
         '@babel/plugin-transform-runtime',
+        '@babel/plugin-transform-arrow-functions',
         '@babel/plugin-transform-flow-strip-types',
         '@babel/plugin-syntax-dynamic-import',
         '@babel/plugin-syntax-import-meta',
@@ -28,6 +29,7 @@ module.exports = {
                 legacy: true
             }
         ],
+        '@babel/plugin-proposal-export-namespace-from',
         '@babel/plugin-proposal-numeric-separator',
         test && '@babel/plugin-transform-react-jsx-source'
     ].filter(Boolean)

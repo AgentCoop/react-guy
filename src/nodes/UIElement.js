@@ -35,8 +35,9 @@ class UIElement extends AbstractNode {
         return true;
     }
 
-    async componentDidMount() {
-        await this.dispatchSync(this.createRegisterEvent());
+    componentDidMount() {
+        console.log("register event");
+        this.dispatch(this.createRegisterEvent(), false);
     }
 
     createRegisterEvent = () => {
@@ -115,13 +116,9 @@ class UIElement extends AbstractNode {
             value,
             state,
             errors,
-            dispatch: (type, payload) => {
+            dispatch: (type, payload, async = true) => {
                 const event = this.createEvent(type, payload);
-                return this.dispatch(event);
-            },
-            dispatchSync: (type, payload) => {
-                const event = this.createEvent(type, payload);
-                return this.dispatchSync(event);
+                return this.dispatch(event, async);
             }
         };
 

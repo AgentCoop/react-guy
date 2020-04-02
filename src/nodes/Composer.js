@@ -116,7 +116,6 @@ class Composer extends AbstractNode {
 
     registerElement = el => {
         const fqn = el.getName(true);
-        console.log(fqn);
         if (!fqn) return;
         invariant(
             !this.registeredElements.has(fqn),

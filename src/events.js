@@ -32,9 +32,10 @@ export const EVENT_ATTR_DISCARD_CB = Symbol("discard_cb");
 export const EVENT_ATTR_RESOLVE_CB = Symbol("resolve_cb");
 export const EVENT_ATTR_REJECT_CB = Symbol("reject_cb");
 
+export const EVENT_HANDLER_ON_PROPAGATION_STARTED = "onPropagationStarted";
+export const EVENT_HANDLER_ON_PROPAGATION_FINISHED = "onPropagationFinished";
 export const EVENT_HANDLER_ON_ASYNC_VALIDATE_STARTED = "onAsyncValidateStarted";
-export const EVENT_HANDLER_ON_ASYNC_VALIDATE_FINISHED =
-    "onAsyncValidateFinished";
+export const EVENT_HANDLER_ON_ASYNC_VALIDATE_FINISHED = "onAsyncValidateFinished";
 export const EVENT_HANDLER_ON_VALUE_CHANGED = "onValueChanged";
 
 export const isElement = node => node.getType() === NODE_TYPE_UI_ELEMENT;
@@ -78,8 +79,9 @@ function onRegisterDefault(event, details) {
     } = event;
     const root = target.getRoot();
     root.registerElement(target);
+
     if (target.isValueless()) {
-        event[EVENT_ATTR_RESOLVE_CB]();
+        event[EVENT_ATTR_RESOLVE_CB] && event[EVENT_ATTR_RESOLVE_CB]();
         return;
     }
 
@@ -88,14 +90,15 @@ function onRegisterDefault(event, details) {
         valueBag = {};
         valueBag[target.getName()] = value;
     }
+    console.log('register', valueBag)
     root.values = merge.recursive(true, root.values, valueBag);
-    event[EVENT_ATTR_RESOLVE_CB]();
+    event[EVENT_ATTR_RESOLVE_CB] && event[EVENT_ATTR_RESOLVE_CB]();
 }
 
 function onNewValueDefault(event, details) {
     const { target, payload } = event;
     let { valueBag } = details;
-    console.log("values", valueBag);
+    console.log("values", payload);
     target.setValue(payload, function() {
         if (event[EVENT_ATTR_RESOLVE_CB]) event[EVENT_ATTR_RESOLVE_CB]();
     });
@@ -105,6 +108,7 @@ function onNewValueDefault(event, details) {
         valueBag[target.getName()] = payload;
     }
     root.values = merge.recursive(true, root.values, valueBag);
+    console.log('root', root.values)
 }
 
 function onValueChangedDefault(event, details) {
@@ -390,10 +394,15 @@ export function findEventHandlerByName(node, name) {
     }
 }
 
-export function invokeEventHandlerByName(node, name, event, details) {
+export async function invokeEventHandlerByName(node, name, event, details) {
     const handler = findEventHandlerByName(node, name);
-    if (!handler) return null;
-    return handler.call(node, event, details);
+    if (!handler)
+        return Promise.resolve(null);
+    const asyncHandlerOrResult = handler.call(node, event, details);
+    if (asyncHandler(asyncHandlerOrResult))
+        return promisifyHandler.call(node, asyncHandlerOrResult)(event, details);
+    else
+        return Promise.resolve(asyncHandlerOrResult);
 }
 
 function getEventHandler(event) {
@@ -445,7 +454,7 @@ function createHandlerExecutor(
 }
 
 async function capturePhase(target, event, details, forceSync = false) {
-    // The path from the root node to the target one not including itself
+    // The path from the root node to the target node not including it.
     const descendants = target.getDescendantsPath(false);
     const promises = [];
     descendants.forEach(function(node) {
@@ -496,7 +505,9 @@ async function invokeNodeEventHandlers(node, event, details) {
         });
 
     listeners.forEach(({ handler, options }) => {
-        const { once, sync } = options;
+        const { once, sync, useCapture } = options;
+        if (useCapture)
+            return;
         let pm;
         if (sync) {
             pm = promisifyHandler.call(node, handler)(event, details);
@@ -542,19 +553,34 @@ async function bubblePhase(target, event, details, forceSync = false) {
     return Promise.resolve(true);
 }
 
-export async function dispatch(target, event) {
+export async function dispatch(target, event, async) {
     event.target = target;
     const details = getEventDetails(target);
+    const root = target.getRoot();
     try {
-        await capturePhase(target, event, details);
-        await bubblePhase(target, event, details);
+        invokeEventHandlerByName(root, EVENT_HANDLER_ON_PROPAGATION_STARTED, event, details);
+        console.log('async', async, event.type)
+        if (async)
+            await dispatchAsync(target, event, details);
+        else
+            await dispatchSync(target, event, details);
     } catch (e) {
-        console.log("Cought error", e);
-        /* ... */
-    } finally {
-        const root = target.getRoot();
-        invokeDefaultEventHandler.call(root, event, details);
+        console.log(e, 'error')
+        if (async)
+            return Promise.resolve(false);
+        else
+            return Promise.reject(e);
     }
+
+    invokeDefaultEventHandler.call(root, event, details);
+    invokeEventHandlerByName(root, EVENT_HANDLER_ON_PROPAGATION_FINISHED, event, details);
+
+    return Promise.resolve(true);
+}
+
+async function dispatchAsync(target, event, details) {
+    await capturePhase(target, event, details);
+    await bubblePhase(target, event, details);
 }
 
 /**
@@ -562,32 +588,25 @@ export async function dispatch(target, event) {
  * @returns {Promise}
  */
 export async function dispatchSync(target, event) {
-    event.target = target;
     let error = null;
     const pm = new Promise(async function(resolve, reject) {
         const details = getEventDetails(target);
         event[EVENT_ATTR_RESOLVE_CB] = resolve;
         event[EVENT_ATTR_REJECT_CB] = reject;
-        try {
-            await capturePhase(target, event, details, true);
-            await bubblePhase(target, event, details, true);
-        } catch (e) {
-            console.log("cought error");
-            error = e;
-        } finally {
-            const root = target.getRoot();
-            invokeDefaultEventHandler.call(root, event, details);
-            if (error) throw error;
-        }
+        console.log('Capture sync')
+        await capturePhase(target, event, details, true);
+        console.log('Bubble phase sync')
+        await bubblePhase(target, event, details, true);
+        resolve();
     });
-
     return pm;
 }
 
 export function invokeDefaultEventHandler(event, details) {
-    const defaultBehaviour = defaultBehaviourMap[event.type];
+    const { type } = event;
+    const defaultBehaviour = defaultBehaviourMap[type];
 
-    if (!defaultBehaviour || defaultIsPrevented(event)) return;
-
-    return defaultBehaviour(event, details);
+    console.log('default', defaultBehaviour, type)
+    if (defaultBehaviour && ! defaultIsPrevented(event))
+        defaultBehaviour(event, details);
 }
