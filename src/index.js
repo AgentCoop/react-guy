@@ -9,5 +9,6 @@ export {
     EVENT_TYPE_REGISTER,
     EVENT_TYPE_RESET,
     EVENT_TYPE_CLEAR_ERRORS,
-    EVENT_TYPE_FINALIZE
+    EVENT_TYPE_FINALIZE,
+    AsyncHandler
 } from "./events";

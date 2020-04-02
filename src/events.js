@@ -413,7 +413,8 @@ async function capturePhase(target, event, details, forceSync = false) {
                 const { once } = options;
                 const pm = invokeNodeEventHandler(node, handler, event, details);
                 promises.push(pm);
-                if (once) node.removeEventListener(handler);
+                if (once)
+                    node.removeEventListener(handler);
             });
     });
     return Promise.all(promises);
@@ -492,6 +493,7 @@ export async function dispatch(target, event, async) {
         await invokeEventHandlerByName(root, EVENT_HANDLER_ON_PROPAGATION_STARTED, event, details);
         await capturePhase(target, event, details);
         await bubblePhase(target, event, details);
+        invokeDefaultEventHandler.call(root, event, details);
         await invokeEventHandlerByName(root, EVENT_HANDLER_ON_PROPAGATION_FINISHED, event, details);
     } catch (e) {
         console.log(e, 'error')
@@ -501,39 +503,13 @@ export async function dispatch(target, event, async) {
             return Promise.reject(e);
     }
 
-    invokeDefaultEventHandler.call(root, event, details);
     return Promise.resolve(true);
-}
-
-async function dispatchAsync(target, event, details) {
-    await capturePhase(target, event, details);
-    await bubblePhase(target, event, details);
-}
-
-/**
- * Dispatches an event and awaits until the event will be handled or discarded
- * @returns {Promise}
- */
-export async function dispatchSync(target, event) {
-    let error = null;
-    const pm = new Promise(async function(resolve, reject) {
-        const details = getEventDetails(target);
-        event[EVENT_ATTR_RESOLVE_CB] = resolve;
-        event[EVENT_ATTR_REJECT_CB] = reject;
-        console.log('Capture sync')
-        await capturePhase(target, event, details, true);
-        console.log('Bubble phase sync')
-        await bubblePhase(target, event, details, true);
-        resolve();
-    });
-    return pm;
 }
 
 export function invokeDefaultEventHandler(event, details) {
     const { type } = event;
     const defaultBehaviour = defaultBehaviourMap[type];
 
-    console.log('default', defaultBehaviour, type)
     if (defaultBehaviour && ! defaultIsPrevented(event))
         defaultBehaviour(event, details);
 }

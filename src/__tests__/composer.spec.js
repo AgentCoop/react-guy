@@ -64,10 +64,9 @@ it('CheckboxWithLabel changes the text after click', async () => {
             }}
             onPropagationFinished={function(event) {
                 if (event.type === EVENT_TYPE_FINALIZE)
-                    console.log(this.values, '<>')
-                    // expect(this.values).toEqual({ auth:
-                    //    { email: 'john.doe@gmail.com',  password: "secret" }
-                    // });
+                    expect(this.values).toEqual({ auth:
+                       { email: 'john.doe@gmail.com',  password: "secret" }
+                    });
             }}
             onFinalize={(event) => {
             }}
