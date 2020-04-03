@@ -284,25 +284,37 @@ function throttlePm(duration, event) {
 }
 
 function throttleDebouncePm(event, pmGenerator, nodeId, map, specs) {
-    const { filter, duration } = specs;
+    if (!Array.isArray(specs))
+        specs = [specs];
 
-    if (specs.onDiscard) event[EVENT_ATTR_DISCARD_CB] = specs.onDiscard;
+    const promises = [];
+    specs.forEach(spec => {
+        const { filter, duration } = spec;
 
-    let nodeMap;
-    if (!map.has(nodeId)) {
-        nodeMap = new Map();
-        map.set(nodeId, nodeMap);
-    } else nodeMap = map.get(nodeId);
+        if (!eventFilter(event, filter))
+            return;
 
-    let pm;
-    if (nodeMap.has(filter)) {
-        pm = nodeMap.get(filter);
-    } else {
-        pm = pmGenerator(duration, event)();
-        nodeMap.set(filter, pm);
-    }
+        if (spec.onDiscard)
+            event[EVENT_ATTR_DISCARD_CB] = spec.onDiscard;
 
-    return pm();
+        let nodeMap;
+        if (!map.has(nodeId)) {
+            nodeMap = new Map();
+            map.set(nodeId, nodeMap);
+        } else
+            nodeMap = map.get(nodeId);
+
+        let pm;
+        if (nodeMap.has(filter)) {
+            pm = nodeMap.get(filter);
+        } else {
+            pm = pmGenerator(duration, event)();
+            nodeMap.set(filter, pm);
+        }
+        promises.push(pm());
+    });
+
+    return Promise.all(promises);
 }
 
 function promisifyHandler(handler) {
@@ -342,7 +354,7 @@ function getDebounceThrottlePromise(event) {
         "debounce and throttle properties are mutually exclusive"
     );
 
-    if (debounce && eventFilter(event, debounce.filter))
+    if (debounce)
         return throttleDebouncePm(
             event,
             debouncePm,
@@ -350,7 +362,7 @@ function getDebounceThrottlePromise(event) {
             debounceEventMap,
             debounce
         );
-    else if (throttle && eventFilter(event, throttle.filter))
+    else if (throttle)
         return throttleDebouncePm(
             event,
             throttlePm,
