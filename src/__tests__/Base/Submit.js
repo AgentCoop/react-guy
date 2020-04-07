@@ -1,6 +1,6 @@
 import React from "react";
 
-import Button from "../Button";
+import Button from "./Button";
 import {
     EVENT_TYPE_FINALIZE
 } from "../../events";

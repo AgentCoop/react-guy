@@ -45,6 +45,8 @@ async function onFinalizeEvent(event, details, asyncCallbacks) {
         }
     });
 
+    return;
+
     if (validFailed) return;
 
     const { resolve, reject } = asyncCallbacks;

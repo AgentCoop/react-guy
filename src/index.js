@@ -10,5 +10,6 @@ export {
     EVENT_TYPE_RESET,
     EVENT_TYPE_CLEAR_ERRORS,
     EVENT_TYPE_FINALIZE,
-    AsyncHandler
 } from "./events";
+
+export { default as AsyncHandler } from './AsyncHandler';

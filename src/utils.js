@@ -28,3 +28,7 @@ export function findNodesByAttrValue(attr, value, root, except = []) {
     traverse(root);
     return results;
 }
+
+export function fork(cb) {
+    setTimeout(cb, 0);
+}

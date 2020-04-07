@@ -3,6 +3,7 @@ import invariant from "invariant";
 import merge from "merge";
 
 import Collection from "./Collection";
+import AsyncHandler from "./AsyncHandler";
 
 export const NODE_TYPE_COMPOSER = Symbol("composer");
 export const NODE_TYPE_UI_ELEMENT = Symbol("ui_element");
@@ -34,6 +35,11 @@ export const EVENT_ATTR_REJECT_CB = Symbol("reject_cb");
 
 export const EVENT_HANDLER_ON_PROPAGATION_STARTED = "onPropagationStarted";
 export const EVENT_HANDLER_ON_PROPAGATION_FINISHED = "onPropagationFinished";
+
+export const EVENT_HANDLER_ON_ASYNC_HANDLER_STARTED = "onAsyncHandlerStarted";
+export const EVENT_HANDLER_ON_ASYNC_HANDLER_FAILED = "onAsyncHandlerFailed";
+export const EVENT_HANDLER_ON_ASYNC_HANDLER_FINISHED = "onAsyncHandlerFinished";
+
 export const EVENT_HANDLER_ON_ASYNC_VALIDATE_STARTED = "onAsyncValidateStarted";
 export const EVENT_HANDLER_ON_ASYNC_VALIDATE_FINISHED = "onAsyncValidateFinished";
 export const EVENT_HANDLER_ON_VALUE_CHANGED = "onValueChanged";
@@ -50,30 +56,6 @@ export const isEmpty = el => {
 export async function runCustomValidator(validator, node, event, details) {
     const executor = createHandlerExecutor(validator, true);
     return executor(node, event, details)();
-}
-
-export function AsyncHandler(handler, fork = false) {
-    this.handler = promisifyHandler(handler);
-    this.fork = fork;
-}
-
-AsyncHandler.prototype.run = async function(event, details) {
-    if (this.fork) {
-        const clonedEvent = cloneEvent(event);
-        thread(async () => {
-            await handler(clonedEvent, details);
-        });
-    } else {
-        await handler(event, details);
-    }
-}
-
-async function AsyncHandlerAsPromise(handler) {
-    return (event, details) =>
-        new Promise(async function(resolve, reject) {
-            const result = await handler;
-            resolve();
-        });
 }
 
 const eventTypeToPropNameMap = {
@@ -211,7 +193,7 @@ function addResult(result) {
     this[EVENT_ATTR_RESULTS].push(result);
 }
 
-function cloneEvent(event) {
+export function cloneEvent(event) {
     const cloned = { ...event };
     for (let sym of Object.getOwnPropertySymbols(event)) cloned[sym] = event[sym];
     return cloned;
@@ -317,31 +299,45 @@ function throttleDebouncePm(event, pmGenerator, nodeId, map, specs) {
     return Promise.all(promises);
 }
 
-function promisifyHandler(handler) {
+export function promisifyHandler(handler) {
     const ctx = this;
-    return (event, details) =>
-        new Promise(function(resolve, reject) {
+    return (event, details) => {
+        const clonedEvent = cloneEvent(event);
+        return new Promise(function (resolve, reject) {
             function resolveWrapper(result) {
                 addResult.call(event, result);
                 resolve(result);
             }
-            const clonedEvent = cloneEvent(event);
             handler.call(ctx, clonedEvent, details, {
                 resolve: resolveWrapper,
                 reject
             });
         });
+    }
 }
 
-async function invokeNodeEventHandler(node, handler, event, details) {
-    if (handler instanceof AsyncHandler)
-        return handler.call(node).run(event, details);
-    else {
-        const dummyCallbacks = {
-            resolve() { },
-            reject() { }
-        };
-        return handler.call(node, event, details, dummyCallbacks);
+async function invokeNodeEventHandler(node, handler, options, event, details) {
+    const { once, fork } = options;
+    async function invoke() {
+        const asyncHandlerOrResult = handler.call(node, event, details);
+        let pm;
+        if (asyncHandlerOrResult instanceof  AsyncHandler) {
+            //console.log(asyncHandlerOrResult.foo(), 'sss')
+            pm = asyncHandlerOrResult.run.call(node, event, details);
+        }
+        else
+            pm = Promise.resolve(asyncHandlerOrResult);
+        if (once)
+            node.removeEventHandler(node, handler);
+        return pm;
+    }
+
+    if (fork) {
+        thread(async () => {
+            invoke();
+        });
+    } else {
+        return invoke();
     }
 }
 
@@ -401,7 +397,17 @@ export async function invokeEventHandlerByName(node, name, event, details) {
     if (!handler)
         return null;
     else
-        return invokeNodeEventHandler(node, handler, event, details);
+        return invokeNodeEventHandler(node, handler, {}, event, details);
+}
+
+export async function invokeSyncEventHandlerByName(node, name, event, details) {
+    const handler = findEventHandlerByName(node, name);
+    if (!handler)
+        return null;
+    else {
+        result = handler.call(node, event, details);
+        return result;
+    }
 }
 
 function getEventHandler(event) {
@@ -419,11 +425,8 @@ async function capturePhase(target, event, details, forceSync = false) {
             .getEventListeners(event.type)
             .filter(({ options }) => options.useCapture)
             .forEach(({ handler, options }) => {
-                const { once } = options;
-                const pm = invokeNodeEventHandler(node, handler, event, details);
+                const pm = invokeNodeEventHandler(node, handler, options, event, details);
                 promises.push(pm);
-                if (once)
-                    node.removeEventListener(handler);
             });
     });
     return Promise.all(promises);
@@ -451,12 +454,8 @@ async function invokeNodeEventHandlers(node, event, details) {
         const { once, useCapture } = options;
         if (useCapture)
             return;
-        if (handler instanceof AsyncHandler)
-            promises.push(handler.call(node).run(event, details));
-        else {
-            handler.call(node, event, details);
-        }
-        if (once) node.removeEventListener(handler);
+        const pm = invokeNodeEventHandler(node, handler, options, event, details);
+        promises.push(pm);
     });
 
     if (promises.length) {

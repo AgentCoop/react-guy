@@ -5,7 +5,7 @@ import {
     Composer,
     ElementGroup,
     EVENT_TYPE_FINALIZE, EVENT_TYPE_VALUE_CHANGED
-} from '../../src';
+} from '../index';
 
 import Submit from "./Base/Submit";
 import Email from "./Fields/Email";
@@ -15,13 +15,13 @@ it('should debounce 3 events and handle 1', async () => {
     const onInputDiscarded = jest.fn();
 
     const debounceSubmitSpec = {
-        duration: 250,
+        duration: 50,
         onDiscard: onSubmitDiscarded,
         filter: { type: EVENT_TYPE_FINALIZE }
     };
 
     const debounceInputSpec = {
-        duration: 250,
+        duration: 50,
         onDiscard: onInputDiscarded,
         filter: { type: EVENT_TYPE_VALUE_CHANGED }
     };
@@ -63,6 +63,6 @@ it('should debounce 3 events and handle 1', async () => {
         setTimeout(function() {
             changeEmail('bar');
             resolve();
-        }, 300);
+        }, 150);
     });
 });

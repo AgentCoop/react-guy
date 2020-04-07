@@ -5,24 +5,10 @@ import {
     Composer,
     ElementGroup,
     EVENT_TYPE_FINALIZE
-} from '../../src';
+} from '../index';
 
-import Input from './Input';
-import Button from './Button';
-
-function Email() {
-    return (
-        <Input
-            name={"email"}
-            label={"Email"}
-            type={"text"}
-        />
-    );
-}
-
-function Submit() {
-    return <Button type={EVENT_TYPE_FINALIZE}>Submit</Button>;
-}
+import Submit from './Base/Submit';
+import Email from './Fields/Email';
 
 function increment(event) {
     event.payload++;
