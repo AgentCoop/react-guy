@@ -14,8 +14,10 @@ import {
     EVENT_HANDLER_ON_ASYNC_VALIDATE_STARTED,
     EVENT_HANDLER_ON_ASYNC_VALIDATE_FINISHED,
     EVENT_ATTR_RESOLVE_CB,
-    EVENT_TYPE_VALUE_CHANGED
+    EVENT_TYPE_VALUE_CHANGED, invokeSyncEventHandlerByName, EVENT_HANDLER_ON_VALIDATION_FAILED
 } from "../events";
+
+import AsyncHandler from "../AsyncHandler";
 
 function onValueChanged(event, details) {
     const { target, payload } = event;
@@ -24,24 +26,33 @@ function onValueChanged(event, details) {
     });
 }
 
+/**
+ * Vaidates form data
+ */
 async function onFinalizeEvent(event, details, asyncCallbacks) {
-    // Validate form data
     const promises = [];
     const asyncValidatorNodes = [];
     let validFailed = false;
+
     this.traverseValuesTree(function(value, fqn) {
         const node = this.getElementByName(fqn);
+
         if (valueRequired(node) && isEmpty(node)) {
             node.setError({ validationErr: "required value" });
+            invokeSyncEventHandlerByName(node, EVENT_HANDLER_ON_VALIDATION_FAILED, event, details);
             validFailed = true;
-        } else if (node.props.validate) {
+        } else if (node.props.validate) { // Custom validator
             const value = node.getValue();
             const asyncOrValue = node.props.validate(value);
-            if (typeof asyncOrValue === "function") {
+            if (asyncOrValue instanceof AsyncHandler) {
                 asyncValidatorNodes.push(node);
-                promises.push(runCustomValidator(asyncOrValue, node, event));
-            } else if (asyncOrValue !== true)
-                node.setError({ validationErr: asyncOrValue });
+                const pm = AsyncHandler.run(node, event, details);
+                promises.push(pm);
+            } else if (asyncOrValue !== true) {
+                node.setError({validationErr: asyncOrValue});
+                invokeSyncEventHandlerByName(node, EVENT_HANDLER_ON_VALIDATION_FAILED, event, details);
+                validFailed = true;
+            }
         }
     });
 

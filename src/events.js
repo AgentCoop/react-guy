@@ -35,13 +35,12 @@ export const EVENT_ATTR_REJECT_CB = Symbol("reject_cb");
 
 export const EVENT_HANDLER_ON_PROPAGATION_STARTED = "onPropagationStarted";
 export const EVENT_HANDLER_ON_PROPAGATION_FINISHED = "onPropagationFinished";
-
 export const EVENT_HANDLER_ON_ASYNC_HANDLER_STARTED = "onAsyncHandlerStarted";
 export const EVENT_HANDLER_ON_ASYNC_HANDLER_FAILED = "onAsyncHandlerFailed";
 export const EVENT_HANDLER_ON_ASYNC_HANDLER_FINISHED = "onAsyncHandlerFinished";
-
 export const EVENT_HANDLER_ON_ASYNC_VALIDATE_STARTED = "onAsyncValidateStarted";
 export const EVENT_HANDLER_ON_ASYNC_VALIDATE_FINISHED = "onAsyncValidateFinished";
+export const EVENT_HANDLER_ON_VALIDATION_FAILED = 'onValidationFailed';
 export const EVENT_HANDLER_ON_VALUE_CHANGED = "onValueChanged";
 
 export const isElement = node => node.getType() === NODE_TYPE_UI_ELEMENT;
@@ -402,12 +401,8 @@ export async function invokeEventHandlerByName(node, name, event, details) {
 
 export async function invokeSyncEventHandlerByName(node, name, event, details) {
     const handler = findEventHandlerByName(node, name);
-    if (!handler)
-        return null;
-    else {
-        result = handler.call(node, event, details);
-        return result;
-    }
+
+    return handler ? handler.call(node, event, details) : null;
 }
 
 function getEventHandler(event) {

@@ -7,8 +7,10 @@ export default function Login(props) {
         <Input
             validate={value => {
                 const re = /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
-                if (re.test(value))
+                if (!re.test(value))
                     return "Invalid email address";
+                else
+                    return true;
             }}
             name={"email"}
             label={"Email"}

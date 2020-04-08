@@ -11,7 +11,7 @@ import Submit from './Base/Submit';
 import Password from './Fields/Password';
 import Email from './Fields/Email';
 
-it('Should namespace email/password values into auth', async () => {
+it('should namespace email/password values into auth', async () => {
     const { getByText, getByLabelText } = render(
         <Composer
             onPropagationFinished={function(event) {
