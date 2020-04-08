@@ -321,8 +321,7 @@ async function invokeNodeEventHandler(node, handler, options, event, details) {
         const asyncHandlerOrResult = handler.call(node, event, details);
         let pm;
         if (asyncHandlerOrResult instanceof  AsyncHandler) {
-            //console.log(asyncHandlerOrResult.foo(), 'sss')
-            pm = asyncHandlerOrResult.run.call(node, event, details);
+            pm = asyncHandlerOrResult.run(node, event, details);
         }
         else
             pm = Promise.resolve(asyncHandlerOrResult);

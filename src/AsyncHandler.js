@@ -38,9 +38,9 @@ class AsyncHandler {
             return new Promise(async function (resolve, reject) {
                 try {
                     const result = await self.runBody(node, event, details);
-                    resolve(result);
+                    resolve({ node, result });
                 } catch (e) {
-                    reject(e);
+                    reject({ node, result: e });
                 }
             });
         }

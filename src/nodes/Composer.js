@@ -29,7 +29,7 @@ function onValueChanged(event, details) {
 /**
  * Vaidates form data
  */
-async function onFinalizeEvent(event, details, asyncCallbacks) {
+async function onFinalizeEvent(event, details) {
     const promises = [];
     const asyncValidatorNodes = [];
     let validFailed = false;
@@ -46,7 +46,7 @@ async function onFinalizeEvent(event, details, asyncCallbacks) {
             const asyncOrValue = node.props.validate(value);
             if (asyncOrValue instanceof AsyncHandler) {
                 asyncValidatorNodes.push(node);
-                const pm = AsyncHandler.run(node, event, details);
+                const pm = asyncOrValue.run(node, event, details);
                 promises.push(pm);
             } else if (asyncOrValue !== true) {
                 node.setError({validationErr: asyncOrValue});
@@ -56,11 +56,9 @@ async function onFinalizeEvent(event, details, asyncCallbacks) {
         }
     });
 
-    return;
+    if (validFailed)
+        return;
 
-    if (validFailed) return;
-
-    const { resolve, reject } = asyncCallbacks;
     try {
         // onAsyncValidateStarted
         asyncValidatorNodes.push(this);
@@ -74,14 +72,14 @@ async function onFinalizeEvent(event, details, asyncCallbacks) {
         });
         const results = await Promise.all(promises);
         results.forEach(({ result, node }) => {
-            if (result === true) return;
+            if (result === true)
+                return;
             node.setError({ validationErr: result });
         });
-        resolve();
     } catch (e) {
+        console.log('validate error', e)
         const { node, result } = e;
         node.setError({ validationErr: result });
-        reject();
     } finally {
         // onAsyncVaidatorFinished
         asyncValidatorNodes.forEach(node => {
@@ -105,13 +103,8 @@ class Composer extends AbstractNode {
         this.namespace = "";
         this.registeredElements = new Map();
 
-        this.addEventListener(EVENT_TYPE_FINALIZE, onFinalizeEvent, {
-            useCapture: true,
-            sync: true
-        });
-        this.addEventListener(EVENT_TYPE_VALUE_CHANGED, onValueChanged, {
-            useCapture: true
-        });
+        this.addEventListener(EVENT_TYPE_FINALIZE, onFinalizeEvent, { useCapture: true });
+        this.addEventListener(EVENT_TYPE_VALUE_CHANGED, onValueChanged, { useCapture: true });
     }
 
     componentDidMount() {
@@ -158,6 +151,7 @@ class Composer extends AbstractNode {
                     try {
                         cb.call(this, root[key], fqn);
                     } catch (e) {
+                        console.log('e', e)
                         console.log("reject");
                     }
                 }
