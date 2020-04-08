@@ -9,7 +9,6 @@ import {
     EVENT_TYPE_FINALIZE,
     valueRequired,
     isEmpty,
-    runCustomValidator,
     invokeEventHandlerByName,
     EVENT_HANDLER_ON_ASYNC_VALIDATE_STARTED,
     EVENT_HANDLER_ON_ASYNC_VALIDATE_FINISHED,
@@ -77,7 +76,6 @@ async function onFinalizeEvent(event, details) {
             node.setError({ validationErr: result });
         });
     } catch (e) {
-        console.log('validate error', e)
         const { node, result } = e;
         node.setError({ validationErr: result });
     } finally {
@@ -151,8 +149,7 @@ class Composer extends AbstractNode {
                     try {
                         cb.call(this, root[key], fqn);
                     } catch (e) {
-                        console.log('e', e)
-                        console.log("reject");
+
                     }
                 }
             }

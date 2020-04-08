@@ -1,6 +1,5 @@
 import React from "react";
 import ReactDOM from "react-dom";
-import invariant from "invariant";
 
 import AbstractNode from "../AbstractNode";
 import { ParentNodeCtx } from "../utils";

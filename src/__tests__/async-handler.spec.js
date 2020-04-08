@@ -4,8 +4,7 @@ import {fireEvent, render} from '@testing-library/react';
 import {
     AsyncHandler,
     Composer,
-    ElementGroup,
-    EVENT_TYPE_FINALIZE
+    ElementGroup
 } from '../index';
 
 import Submit from "./Base/Submit";

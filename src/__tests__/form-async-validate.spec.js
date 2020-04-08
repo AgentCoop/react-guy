@@ -13,7 +13,6 @@ import {
 } from './utils';
 
 import Submit from './Base/Submit';
-import Password from './Fields/Password';
 import Email from './Fields/Email';
 
 it('should validate email value using async handler', async () => {
@@ -25,11 +24,11 @@ it('should validate email value using async handler', async () => {
         <Composer
             initialValues={{ }}
             onPropagationStarted={function(e) {
-                if (e.type == EVENT_TYPE_FINALIZE)
+                if (e.type === EVENT_TYPE_FINALIZE)
                     expect(asyncValid).toHaveBeenCalledTimes(0);
             }}
             onPropagationFinished={function(e) {
-                if (e.type == EVENT_TYPE_FINALIZE)
+                if (e.type === EVENT_TYPE_FINALIZE)
                     expect(asyncValid).toHaveBeenCalledTimes(1);
             }}
         >

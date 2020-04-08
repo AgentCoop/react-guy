@@ -52,11 +52,6 @@ export const isEmpty = el => {
     else return false;
 };
 
-export async function runCustomValidator(validator, node, event, details) {
-    const executor = createHandlerExecutor(validator, true);
-    return executor(node, event, details)();
-}
-
 const eventTypeToPropNameMap = {
     [EVENT_TYPE_REGISTER]: "onRegister",
     [EVENT_TYPE_VALUE_CHANGED]: "onValueChanged",
@@ -107,13 +102,6 @@ function onNewValueDefault(event, details) {
         valueBag[target.getName()] = payload;
     }
     root.values = merge.recursive(true, root.values, valueBag);
-}
-
-function onValueChangedDefault(event, details) {
-    const { target, payload } = event;
-    target.setValue(payload, function() {
-        if (event[EVENT_ATTR_RESOLVE_CB]) event[EVENT_ATTR_RESOLVE_CB]();
-    });
 }
 
 function onStateChangedDefault(event, details) {
@@ -312,7 +300,7 @@ export function promisifyHandler(handler) {
                 reject
             });
         });
-    }
+    };
 }
 
 async function invokeNodeEventHandler(node, handler, options, event, details) {
@@ -328,7 +316,7 @@ async function invokeNodeEventHandler(node, handler, options, event, details) {
         if (once)
             node.removeEventHandler(node, handler);
         return pm;
-    }
+    };
 
     if (fork) {
         thread(async () => {
@@ -498,7 +486,6 @@ export async function dispatch(target, event, suppressDiscarded = true) {
         invokeDefaultEventHandler.call(root, event, details);
         await invokeEventHandlerByName(root, EVENT_HANDLER_ON_PROPAGATION_FINISHED, event, details);
     } catch (e) {
-        console.log(e, 'error')
         if (suppressDiscarded)
             return Promise.resolve(false);
         else

@@ -1,7 +1,10 @@
 import React from "react";
 
 import AbstractNode from "../AbstractNode";
-import { ParentNodeCtx, patchDetailsValueBag, namespacedValue } from "../utils";
+import {
+    ParentNodeCtx,
+    namespacedValue
+} from "../utils";
 
 import { NODE_TYPE_UI_ELEMENT_GROUP } from "../events";
 

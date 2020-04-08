@@ -5,7 +5,6 @@ import { ParentNodeCtx, findNodesByAttrValue } from "./utils";
 import {
     createEvent,
     dispatch,
-    dispatchSync,
     NODE_CHILDS_ATTR,
     NODE_ID_ATTR,
     NODE_NAME_ATTR,
@@ -18,7 +17,6 @@ import {
 import Collection from "./Collection";
 
 const NODE_CLASS_ATTR = Symbol("node_class_attr");
-const REGISTERED_LISTENERS_ATTR = Symbol("registered_listeners");
 
 class AbstractNode extends React.Component {
     constructor(props) {

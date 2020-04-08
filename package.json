@@ -1,6 +1,6 @@
 {
   "name": "react-guy-composer",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "An event-driven approach to handle components state",
   "main": "./lib/index.js",
   "module": "./es/index.js",
@@ -76,7 +76,8 @@
     "webpack-cli": "^3.3.11"
   },
   "peerDependencies": {
-    "react": "^16.13.0"
+    "react": "^16.13.0",
+    "react-dom": "^16.13.0"
   },
   "peerDependenciesMeta": {
     "immutable": {
@@ -88,7 +89,6 @@
     "es",
     "lib",
     "dist",
-    "immutable.js",
     "*.js.flow"
   ],
   "lint-staged": {
