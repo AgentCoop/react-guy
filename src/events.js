@@ -14,14 +14,6 @@ export const NODE_TYPE_COMPOSER = Symbol("composer");
 export const NODE_TYPE_UI_ELEMENT = Symbol("ui_element");
 export const NODE_TYPE_UI_ELEMENT_GROUP = Symbol("ui_element_group");
 
-export const NODE_ID_ATTR = Symbol("id");
-export const NODE_NAME_ATTR = Symbol("name");
-export const NODE_CHILDS_ATTR = Symbol("childs");
-export const NODE_PREV_SIBLING_ATTR = Symbol("prev_sibling");
-export const NODE_NEXT_SIBLING_ATTR = Symbol("next_sibling");
-export const NODE_PARENT_NODE_ATTR = Symbol("parent_node");
-export const NODE_REGISTERED_LISTENERS_ATTR = Symbol("registered_listeners");
-
 export const isElement = node => node.getType() === NODE_TYPE_UI_ELEMENT;
 export const valueRequired = el => el.props.required;
 export const isEmpty = el => {
@@ -47,6 +39,11 @@ export function defaultIsPrevented(event) {
 
 export function isBubblingStopped(event) {
     return event[attr.STOP_BUBBLING];
+}
+
+export function getListenerNameByEventType(type) {
+    const name = eventTypeToPropNameMap[type];
+    return name;
 }
 
 /**
@@ -161,7 +158,7 @@ async function invokeNodeEventHandler(node, handler, options, event, details) {
         else
             pm = Promise.resolve(asyncHandlerOrResult);
         if (once)
-            node.removeEventHandler(node, handler);
+           node.removeEventListener(handler);
         return pm;
     };
 
@@ -186,7 +183,7 @@ export function getEventHandlerByName(node, name) {
     } else if (typeof node.props[name] === "function") {
         return node.props[name];
     } else {
-        invariant(false, "Failed to retrieve event handler of %s", name);
+        throw Error(`Failed to retrieve event handler of ${name}`);
     }
 }
 
@@ -212,10 +209,20 @@ export async function invokeSyncEventHandlerByName(node, name, event, details) {
     return handler ? handler.call(node, event, details) : null;
 }
 
-function getEventHandler(event) {
-    const { currentNode, type } = event;
-    const handlerName = eventTypeToPropNameMap[type];
-    return findEventHandlerByName(currentNode, handlerName);
+function getStaticEventListener(event) {
+    const { currentNode: node, type } = event;
+    const listenerName = eventTypeToPropNameMap[type];
+
+    if (node.isStaticListenerDisabled(type))
+        return null;
+
+    if (typeof node[listenerName] === "function")
+        return node[listenerName];
+
+    if (typeof node.props[listenerName] === "function")
+        return node.props[listenerName];
+
+    return null;
 }
 
 async function capturePhase(target, event, details, forceSync = false) {
@@ -237,8 +244,8 @@ async function capturePhase(target, event, details, forceSync = false) {
 async function invokeNodeEventHandlers(node, event, details) {
     // Invoke runtime event hadnlers
     const promises = [];
-    const listeners = node.getEventListeners(event.type);
-    const handler = getEventHandler(event);
+    const listeners = [...node.getEventListeners(event.type)];
+    const handler = getStaticEventListener(event);
     if (handler)
         listeners.push({
             handler,
@@ -249,9 +256,10 @@ async function invokeNodeEventHandlers(node, event, details) {
         });
 
     listeners.forEach(({ handler, options }) => {
-        const { once, useCapture } = options;
+        const { useCapture } = options;
         if (useCapture)
             return;
+        //console.log('call', options, event.type, listeners.length)
         const pm = invokeNodeEventHandler(node, handler, options, event, details);
         promises.push(pm);
     });
@@ -274,13 +282,14 @@ async function bubblePhase(target, event, details, forceSync = false) {
     do {
         event.currentNode = p;
         const debounceThrottlePm = getDebounceThrottlePromise(event);
-        if (debounceThrottlePm)
+        if (debounceThrottlePm) {
             try {
                 await debounceThrottlePm;
             } catch (e) {
                 event[attr.DISCARD_CB](e); // Pass event
                 return Promise.resolve(false);
             }
+        }
 
         await invokeNodeEventHandlers(p, event, details);
 
@@ -291,7 +300,7 @@ async function bubblePhase(target, event, details, forceSync = false) {
     return Promise.resolve(true);
 }
 
-export async function dispatch(target, event, suppressDiscarded = true) {
+export async function dispatch(target, event, suppressErrors = true) {
     event.target = target;
     const details = getEventDetails(target);
     const root = target.getRoot();
@@ -302,8 +311,7 @@ export async function dispatch(target, event, suppressDiscarded = true) {
         invokeDefaultEventHandler(event, details);
         await invokeEventHandlerByName(root, listener.ON_PROPAGATION_FINISHED, event, details);
     } catch (e) {
-        console.log(e)
-        if (suppressDiscarded)
+        if (suppressErrors)
             return Promise.resolve(false);
         else
             return Promise.reject(e);

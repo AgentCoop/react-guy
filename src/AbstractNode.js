@@ -1,22 +1,16 @@
 import React from "react";
 
 import { ParentNodeCtx, findNodesByAttrValue } from "./utils";
-
 import {
     createEvent,
-    dispatch,
-    NODE_CHILDS_ATTR,
-    NODE_ID_ATTR,
-    NODE_NAME_ATTR,
-    NODE_NEXT_SIBLING_ATTR,
-    NODE_PARENT_NODE_ATTR,
-    NODE_PREV_SIBLING_ATTR,
-    NODE_REGISTERED_LISTENERS_ATTR
+    dispatch
 } from "./events";
 
+import * as attr from './nodeAttr';
 import Collection from "./Collection";
-
-const NODE_CLASS_ATTR = Symbol("node_class_attr");
+import {
+    DISABLED_STATIC_LISTENERS
+} from "./nodeAttr";
 
 class AbstractNode extends React.Component {
     constructor(props) {
@@ -25,18 +19,15 @@ class AbstractNode extends React.Component {
         this.$type = nodeType;
 
         // Unique integer ID, big enough to avoid possible collisions
-        this[NODE_ID_ATTR] = parseInt(
-            Math.random()
-                .toString()
-                .substr(2)
-        );
-        this[NODE_NAME_ATTR] = props.name ? props.name : null;
-        this[NODE_CHILDS_ATTR] = new Map();
-        this[NODE_PARENT_NODE_ATTR] = null;
-        this[NODE_NEXT_SIBLING_ATTR] = null;
-        this[NODE_PREV_SIBLING_ATTR] = null;
-        this[NODE_REGISTERED_LISTENERS_ATTR] = new Map();
-        this[NODE_CLASS_ATTR] = props._class;
+        this[attr.ID] = parseInt(Math.random().toString().substr(2));
+        this[attr.NAME] = props.name ? props.name : null;
+        this[attr.CHILDS] = new Map();
+        this[attr.PARENT] = null;
+        this[attr.NEXT_SIBLING] = null;
+        this[attr.PREV_SIBLING] = null;
+        this[attr.REGISTERED_LISTENERS] = new Map();
+        this[attr.DISABLED_STATIC_LISTENERS] = new Map();
+        this[attr.CLASS] = props._class;
 
         this.createEvent = createEvent;
         this.dispatch = (event, async) => {
@@ -50,31 +41,41 @@ class AbstractNode extends React.Component {
     addEventListener = (
         eventType,
         handler,
-        options = { once: false, useCapture: false }
+        options = { once: false, useCapture: false, overwrite: false }
     ) => {
         let registeredListeners;
-        if (!this[NODE_REGISTERED_LISTENERS_ATTR].has(eventType))
+        const { overwrite } = options;
+        if (!this[attr.REGISTERED_LISTENERS].has(eventType) || overwrite)
             registeredListeners = [];
         else
-            registeredListeners = this[NODE_REGISTERED_LISTENERS_ATTR].get(eventType);
+            registeredListeners = this[attr.REGISTERED_LISTENERS].get(eventType);
+
         registeredListeners.push({ handler: handler.bind(this), options });
-        this[NODE_REGISTERED_LISTENERS_ATTR].set(eventType, registeredListeners);
+        this[attr.REGISTERED_LISTENERS].set(eventType, registeredListeners);
+
+        if (overwrite)
+            this[DISABLED_STATIC_LISTENERS].set(eventType, true);
     };
 
     removeEventListener = handler => {
-        this[NODE_REGISTERED_LISTENERS_ATTR].forEach((listeners, eventType) => {
+        this[attr.REGISTERED_LISTENERS].forEach((listeners, eventType) => {
             listeners.forEach((listener, index) => {
-                if (listener.handler === handler) listeners.splice(index, 1);
+                if (listener.handler === handler)
+                    listeners.splice(index, 1);
             });
         });
     };
 
+    isStaticListenerDisabled = (eventType) => {
+        return this[attr.DISABLED_STATIC_LISTENERS].has(eventType);
+    }
+
     getClass = () => {
-        return this[NODE_CLASS_ATTR];
+        return this[attr.CLASS];
     };
 
     getEventListeners = eventType => {
-        const listeners = this[NODE_REGISTERED_LISTENERS_ATTR].get(eventType);
+        const listeners = this[attr.REGISTERED_LISTENERS].get(eventType);
         return listeners ? listeners : [];
     };
 
@@ -95,7 +96,7 @@ class AbstractNode extends React.Component {
     };
 
     getId = () => {
-        return this[NODE_ID_ATTR];
+        return this[attr.ID];
     };
 
     getType = () => {
@@ -103,25 +104,28 @@ class AbstractNode extends React.Component {
     };
 
     getName = (fqn = false) => {
-        if (!this[NODE_NAME_ATTR])
+        if (!this[attr.NAME])
             return null;
         else
             return fqn
-                ? this.getNamespace(true) + "." + this[NODE_NAME_ATTR]
-                : this[NODE_NAME_ATTR];
+                ? this.getNamespace(true) + "." + this[attr.NAME]
+                : this[attr.NAME];
     };
 
     getNamespace = (fullyQualified = true) => {
-        if (!fullyQualified) return this.namespace;
+        if (!fullyQualified)
+            return this.namespace;
+
         const parts = this.getAncestorsPath()
             .reverse()
             .filter(p => p.getNamespace(false) !== null)
             .map(p => p.getNamespace(false));
+
         return parts.join(".");
     };
 
     addChildNode = child => {
-        const childsMap = this[NODE_CHILDS_ATTR];
+        const childsMap = this[attr.CHILDS];
 
         if (childsMap.has(child.getId()))
             // Do not add the same node twice
@@ -135,35 +139,38 @@ class AbstractNode extends React.Component {
         const results = [];
 
         let p = this;
-        while ((p = p.getPrevSibling())) results.unshift(p);
+        while ((p = p.getPrevSibling()))
+            results.unshift(p);
 
         p = this;
-        while ((p = p.getNextSibling())) results.push(p);
+        while ((p = p.getNextSibling()))
+            results.push(p);
 
         return results;
     };
 
     getParentNode = () => {
-        return this[NODE_PARENT_NODE_ATTR];
+        return this[attr.PARENT];
     };
 
     getRoot = () => {
         let p = this;
-        while (p.getParentNode()) p = p.getParentNode();
+        while (p.getParentNode())
+            p = p.getParentNode();
 
         return p;
     };
 
     getChildNodes = () => {
-        return Array.from(this[NODE_CHILDS_ATTR].values());
+        return Array.from(this[attr.CHILDS].values());
     };
 
     getPrevSibling = () => {
-        return this[NODE_PREV_SIBLING_ATTR];
+        return this[attr.PREV_SIBLING];
     };
 
     getNextSibling = () => {
-        return this[NODE_NEXT_SIBLING_ATTR];
+        return this[attr.NEXT_SIBLING];
     };
 
     findByElementName = (name, excludeNode = null) => {
@@ -184,7 +191,7 @@ class AbstractNode extends React.Component {
     };
 
     findByClass = (_class, except = []) => {
-        const nodes = findNodesByAttrValue(NODE_CLASS_ATTR, _class, this, except);
+        const nodes = findNodesByAttrValue(attr.CLASS, _class, this, except);
         return new Collection(nodes);
     };
 
@@ -209,9 +216,10 @@ class AbstractNode extends React.Component {
         return (
             <ParentNodeCtx.Consumer>
                 {({ parent, ...passThroughCtx }) => {
-                    this[NODE_PARENT_NODE_ATTR] = parent;
+                    this[attr.PARENT] = parent;
                     this.nodeContext.parent = this;
-                    if (this.getParentNode()) this.getParentNode().addChildNode(this);
+                    if (this.getParentNode())
+                        this.getParentNode().addChildNode(this);
 
                     for (let key of Object.keys(passThroughCtx)) {
                         this.nodeContext[key] = passThroughCtx[key];
