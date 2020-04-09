@@ -4,9 +4,10 @@ import {fireEvent, render} from '@testing-library/react';
 import {
     Composer,
     ElementGroup,
-    AsyncHandler, EVENT_TYPE_FINALIZE
-} from '../../src';
+    AsyncHandler
+} from '../index';
 
+import * as eventType from '../eventType';
 import {
     delay,
     EVENT_CHANGE_EMAIL_VALUE
@@ -24,11 +25,11 @@ it('should validate email value using async handler', async () => {
         <Composer
             initialValues={{ }}
             onPropagationStarted={function(e) {
-                if (e.type === EVENT_TYPE_FINALIZE)
+                if (e.type === eventType.FINALIZE)
                     expect(asyncValid).toHaveBeenCalledTimes(0);
             }}
             onPropagationFinished={function(e) {
-                if (e.type === EVENT_TYPE_FINALIZE)
+                if (e.type === eventType.FINALIZE)
                     expect(asyncValid).toHaveBeenCalledTimes(1);
             }}
         >

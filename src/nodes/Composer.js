@@ -2,26 +2,26 @@ import React from "react";
 import invariant from "invariant";
 
 import AbstractNode from "../AbstractNode";
+import AsyncHandler from "../AsyncHandler";
 import {
     NODE_TYPE_COMPOSER,
     NODE_PREV_SIBLING_ATTR,
     NODE_NEXT_SIBLING_ATTR,
-    EVENT_TYPE_FINALIZE,
     valueRequired,
     isEmpty,
     invokeEventHandlerByName,
-    EVENT_HANDLER_ON_ASYNC_VALIDATE_STARTED,
-    EVENT_HANDLER_ON_ASYNC_VALIDATE_FINISHED,
-    EVENT_ATTR_RESOLVE_CB,
-    EVENT_TYPE_VALUE_CHANGED, invokeSyncEventHandlerByName, EVENT_HANDLER_ON_VALIDATION_FAILED
+    invokeSyncEventHandlerByName,
 } from "../events";
 
-import AsyncHandler from "../AsyncHandler";
+import * as listener from '../eventListener';
+import * as type from '../eventType';
+import * as attr from '../eventAttr';
 
 function onValueChanged(event, details) {
     const { target, payload } = event;
     target.setValue(payload, function() {
-        if (event[EVENT_ATTR_RESOLVE_CB]) event[EVENT_ATTR_RESOLVE_CB]();
+        if (event[attr.RESOLVE_CB])
+            event[attr.RESOLVE_CB]();
     });
 }
 
@@ -35,10 +35,9 @@ async function onFinalizeEvent(event, details) {
 
     this.traverseValuesTree(function(value, fqn) {
         const node = this.getElementByName(fqn);
-
         if (valueRequired(node) && isEmpty(node)) {
             node.setError({ validationErr: "required value" });
-            invokeSyncEventHandlerByName(node, EVENT_HANDLER_ON_VALIDATION_FAILED, event, details);
+            invokeSyncEventHandlerByName(node, listener.ON_VALIDATION_FAILED, event, details);
             validFailed = true;
         } else if (node.props.validate) { // Custom validator
             const value = node.getValue();
@@ -49,7 +48,7 @@ async function onFinalizeEvent(event, details) {
                 promises.push(pm);
             } else if (asyncOrValue !== true) {
                 node.setError({validationErr: asyncOrValue});
-                invokeSyncEventHandlerByName(node, EVENT_HANDLER_ON_VALIDATION_FAILED, event, details);
+                invokeSyncEventHandlerByName(node, listener.ON_VALIDATION_FAILED, event, details);
                 validFailed = true;
             }
         }
@@ -62,9 +61,9 @@ async function onFinalizeEvent(event, details) {
         // onAsyncValidateStarted
         asyncValidatorNodes.push(this);
         asyncValidatorNodes.forEach(node => {
-            invokeEventHandlerByName(
+            invokeSyncEventHandlerByName(
                 node,
-                EVENT_HANDLER_ON_ASYNC_VALIDATE_STARTED,
+                listener.ON_ASYNC_VALIDATE_STARTED,
                 event,
                 details
             );
@@ -81,9 +80,9 @@ async function onFinalizeEvent(event, details) {
     } finally {
         // onAsyncVaidatorFinished
         asyncValidatorNodes.forEach(node => {
-            invokeEventHandlerByName(
+            invokeSyncEventHandlerByName(
                 node,
-                EVENT_HANDLER_ON_ASYNC_VALIDATE_FINISHED,
+                listener.ON_ASYNC_VALIDATE_FINISHED,
                 event,
                 details
             );
@@ -101,8 +100,8 @@ class Composer extends AbstractNode {
         this.namespace = "";
         this.registeredElements = new Map();
 
-        this.addEventListener(EVENT_TYPE_FINALIZE, onFinalizeEvent, { useCapture: true });
-        this.addEventListener(EVENT_TYPE_VALUE_CHANGED, onValueChanged, { useCapture: true });
+        this.addEventListener(type.FINALIZE, onFinalizeEvent, { useCapture: true });
+        this.addEventListener(type.VALUE_CHANGED, onValueChanged, { useCapture: true });
     }
 
     componentDidMount() {
@@ -120,7 +119,8 @@ class Composer extends AbstractNode {
 
     registerElement = el => {
         const fqn = el.getName(true);
-        if (!fqn) return;
+        if (!fqn)
+            return;
         invariant(
             !this.registeredElements.has(fqn),
             "Element %s already registered",
@@ -149,7 +149,7 @@ class Composer extends AbstractNode {
                     try {
                         cb.call(this, root[key], fqn);
                     } catch (e) {
-
+                        console.log(e, 'traverse values')
                     }
                 }
             }

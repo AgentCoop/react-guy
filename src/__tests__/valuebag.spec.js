@@ -3,10 +3,10 @@ import {fireEvent, render} from '@testing-library/react';
 
 import {
     Composer,
-    ElementGroup,
-    EVENT_TYPE_FINALIZE
-} from '../../src';
+    ElementGroup
+} from '../index';
 
+import * as eventType from '../eventType';
 import Submit from './Base/Submit';
 import Password from './Fields/Password';
 import Email from './Fields/Email';
@@ -15,7 +15,7 @@ it('should namespace email/password values into auth', async () => {
     const { getByText, getByLabelText } = render(
         <Composer
             onPropagationFinished={function(event) {
-                if (event.type === EVENT_TYPE_FINALIZE)
+                if (event.type === eventType.FINALIZE)
                     expect(this.values).toEqual({ auth:
                        { email: 'john.doe@gmail.com',  password: "secret" }
                     });

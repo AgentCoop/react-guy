@@ -4,7 +4,9 @@ import ReactDOM from "react-dom";
 import AbstractNode from "../AbstractNode";
 import { ParentNodeCtx } from "../utils";
 
-import { NODE_TYPE_UI_ELEMENT, EVENT_TYPE_REGISTER } from "../events";
+import { NODE_TYPE_UI_ELEMENT } from "../events";
+
+import * as type from '../eventType';
 
 const EL_PREV_VALUE = Symbol("el_prev_value");
 
@@ -40,7 +42,7 @@ class UIElement extends AbstractNode {
 
     createRegisterEvent = () => {
         const domNode = ReactDOM.findDOMNode(this);
-        return this.createEvent(EVENT_TYPE_REGISTER, {
+        return this.createEvent(type.REGISTER, {
             domNode,
             value: this.state.value
         });

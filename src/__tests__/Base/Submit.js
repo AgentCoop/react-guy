@@ -1,10 +1,14 @@
 import React from "react";
 
 import Button from "./Button";
-import {
-    EVENT_TYPE_FINALIZE
-} from "../../events";
+import * as eventType from '../../eventType';
 
-export default function() {
-    return <Button type={EVENT_TYPE_FINALIZE}>Submit</Button>;
+export default function(props) {
+    return (
+        <Button
+            {...props}
+            type={eventType.FINALIZE}>
+            Submit
+        </Button>
+    );
 }

@@ -3,12 +3,14 @@ import {fireEvent, render} from '@testing-library/react';
 
 import {
     Composer,
-    ElementGroup,
-    EVENT_TYPE_FINALIZE
+    ElementGroup
 } from '../index';
 
+import * as eventType from '../eventType';
 import Submit from './Base/Submit';
 import Email from './Fields/Email';
+
+const TARGET_COUNT = 4;
 
 function increment(event) {
     event.payload++;
@@ -18,20 +20,20 @@ function addCaptureEvent(ref) {
     if (!ref)
         return;
     else
-        return ref.addEventListener(EVENT_TYPE_FINALIZE, (e) => increment(e), { useCapture: true });
+        return ref.addEventListener(eventType.FINALIZE, (e) => increment(e), { useCapture: true });
 }
 
-it('should propagate through all nodes 4 times', () => {
+it(`should propagate through all nodes ${TARGET_COUNT} times`, () => {
     const { getByText } = render(
         <Composer
             ref={addCaptureEvent}
             onPropagationStarted={function(event) {
-                if (event.type === EVENT_TYPE_FINALIZE)
+                if (event.type === eventType.FINALIZE)
                     event.payload = 0;
             }}
             onPropagationFinished={function(event) {
-                if (event.type === EVENT_TYPE_FINALIZE)
-                    expect(event.payload).toBe(4);
+                if (event.type === eventType.FINALIZE)
+                    expect(event.payload).toBe(TARGET_COUNT);
             }}
             initialValues={{}}
             onFinalize={increment}

@@ -7,19 +7,31 @@ import {
     ElementGroup
 } from '../index';
 
+import {delay} from './utils';
+import * as eventType from '../eventType';
+
 import Submit from "./Base/Submit";
+
+const TARGET_COUNT = 7;
 
 function incrementCounter(e) {
     const { target } = e;
-    target.getRoot().counter++;
+    if (typeof target.getRoot().counter === "undefined")
+        target.getRoot().counter = 1;
+    else
+        target.getRoot().counter++;
 }
 
-it('should propagate through all nodes 4 times', () => {
+it(`should propagate through all nodes ${TARGET_COUNT} times`, async () => {
     const { getByText } = render(
         <Composer
-            onPropagationStarted={e => e.target.getRoot().counter = 1}
+            onPropagationStarted={incrementCounter}
             onPropagationFinished={function(e) {
-                //expect(e.target.getRoot().counter).toBe(3);
+                incrementCounter(e);
+                if (e.type === eventType.FINALIZE)
+                    expect(e.target.getRoot().counter).toBe(TARGET_COUNT);
+                else if (e.type === eventType.REGISTER)
+                    expect(e.target.getRoot().counter).toBe(2);
             }}
             initialValues={{}}
             onFinalize={incrementCounter}
@@ -27,10 +39,10 @@ it('should propagate through all nodes 4 times', () => {
             <form>
                 <ElementGroup
                     onFinalize={function(event) {
-                        const { target } = event;
                         return new AsyncHandler(function(event, details, { resolve, reject }) {
                             setTimeout(function() {
-                                expect(target.getRoot().counter).toBe(2); // onPropagationStarted, Submit
+                                const { target } = event;
+                                expect(target.getRoot().counter).toBe(4);
                                 incrementCounter(event);
                                 resolve(true);
                             }, 50);
@@ -46,5 +58,9 @@ it('should propagate through all nodes 4 times', () => {
         </Composer>
     );
 
+    await delay(100);
+
     fireEvent.click(getByText('Submit'));
+
+    await delay(100);
 });

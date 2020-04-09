@@ -103,7 +103,8 @@ class AbstractNode extends React.Component {
     };
 
     getName = (fqn = false) => {
-        if (!this[NODE_NAME_ATTR]) return null;
+        if (!this[NODE_NAME_ATTR])
+            return null;
         else
             return fqn
                 ? this.getNamespace(true) + "." + this[NODE_NAME_ATTR]

@@ -3,9 +3,9 @@ import React from 'react';
 import { UIElement } from '../..';
 
 export default function Button(props) {
-    const { type, children } = props;
+    const { type, children, ...rest } = props;
     return (
-        <UIElement>
+        <UIElement {...rest}>
             {({ value, state, dispatch }) => {
                 return (
                     <button

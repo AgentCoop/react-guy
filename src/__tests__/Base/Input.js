@@ -1,10 +1,10 @@
 import React from 'react';
 
 import {
-    UIElement,
-    EVENT_TYPE_NEW_VALUE,
-    EVENT_TYPE_VALUE_CHANGED
+    UIElement
 } from '../..';
+
+import * as eventType from '../../eventType';
 
 export default function Input(props) {
     const { label, type, name, ...rest } = props;
@@ -24,7 +24,7 @@ export default function Input(props) {
                             id={name}
                             type={type}
                             onBlur={e => {
-                                dispatch(EVENT_TYPE_NEW_VALUE, e.target.value);
+                                dispatch(eventType.NEW_VALUE, e.target.value);
                             }}
                             onFocus={e => {
                                 if (Object.keys(errors).length)
@@ -32,7 +32,7 @@ export default function Input(props) {
                             }}
                             onChange={e => {
                                 const newValue = e.target.value;
-                                dispatch(EVENT_TYPE_VALUE_CHANGED, newValue);
+                                dispatch(eventType.VALUE_CHANGED, newValue);
                             }}
                             disabled={disabled}
                             value={value}

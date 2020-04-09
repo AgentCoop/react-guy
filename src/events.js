@@ -1,9 +1,14 @@
 import React from "react";
 import invariant from "invariant";
-import merge from "merge";
 
 import Collection from "./Collection";
 import AsyncHandler from "./AsyncHandler";
+import invokeDefaultEventHandler from './defaultBehaviour';
+import getDebounceThrottlePromise from './debounceThrottle';
+
+import * as type from './eventType';
+import * as attr from './eventAttr';
+import * as listener from './eventListener';
 
 export const NODE_TYPE_COMPOSER = Symbol("composer");
 export const NODE_TYPE_UI_ELEMENT = Symbol("ui_element");
@@ -17,32 +22,6 @@ export const NODE_NEXT_SIBLING_ATTR = Symbol("next_sibling");
 export const NODE_PARENT_NODE_ATTR = Symbol("parent_node");
 export const NODE_REGISTERED_LISTENERS_ATTR = Symbol("registered_listeners");
 
-export const EVENT_TYPE_REGISTER = Symbol("register");
-export const EVENT_TYPE_VALUE_CHANGED = Symbol("value_changed");
-export const EVENT_TYPE_NEW_VALUE = Symbol("new_value");
-export const EVENT_TYPE_STATE_CHANGED = Symbol("state_changed");
-export const EVENT_TYPE_CLEAR_ERRORS = Symbol("clear_errors");
-export const EVENT_TYPE_RESET = Symbol("reset");
-export const EVENT_TYPE_FINALIZE = Symbol("finalize");
-
-export const EVENT_ATTR_PREVENT_DEFAULT = Symbol("prevent_default");
-export const EVENT_ATTR_STOP_BUBBLING = Symbol("stop_bubbling");
-export const EVENT_ATTR_CREATED_AT = Symbol("created_at");
-export const EVENT_ATTR_RESULTS = Symbol("results");
-export const EVENT_ATTR_DISCARD_CB = Symbol("discard_cb");
-export const EVENT_ATTR_RESOLVE_CB = Symbol("resolve_cb");
-export const EVENT_ATTR_REJECT_CB = Symbol("reject_cb");
-
-export const EVENT_HANDLER_ON_PROPAGATION_STARTED = "onPropagationStarted";
-export const EVENT_HANDLER_ON_PROPAGATION_FINISHED = "onPropagationFinished";
-export const EVENT_HANDLER_ON_ASYNC_HANDLER_STARTED = "onAsyncHandlerStarted";
-export const EVENT_HANDLER_ON_ASYNC_HANDLER_FAILED = "onAsyncHandlerFailed";
-export const EVENT_HANDLER_ON_ASYNC_HANDLER_FINISHED = "onAsyncHandlerFinished";
-export const EVENT_HANDLER_ON_ASYNC_VALIDATE_STARTED = "onAsyncValidateStarted";
-export const EVENT_HANDLER_ON_ASYNC_VALIDATE_FINISHED = "onAsyncValidateFinished";
-export const EVENT_HANDLER_ON_VALIDATION_FAILED = 'onValidationFailed';
-export const EVENT_HANDLER_ON_VALUE_CHANGED = "onValueChanged";
-
 export const isElement = node => node.getType() === NODE_TYPE_UI_ELEMENT;
 export const valueRequired = el => el.props.required;
 export const isEmpty = el => {
@@ -53,85 +32,21 @@ export const isEmpty = el => {
 };
 
 const eventTypeToPropNameMap = {
-    [EVENT_TYPE_REGISTER]: "onRegister",
-    [EVENT_TYPE_VALUE_CHANGED]: "onValueChanged",
-    [EVENT_TYPE_NEW_VALUE]: "onNewValue",
-    [EVENT_TYPE_STATE_CHANGED]: "onStateChanged",
-    [EVENT_TYPE_CLEAR_ERRORS]: "onClearErrors",
-    [EVENT_TYPE_RESET]: "onReset",
-    [EVENT_TYPE_FINALIZE]: "onFinalize"
-};
-
-const throttleEventMap = new Map();
-const debounceEventMap = new Map();
-
-//
-// Default event handlers
-//
-function onRegisterDefault(event, details) {
-    const {
-        target,
-        payload: { value }
-    } = event;
-    const root = target.getRoot();
-    root.registerElement(target);
-
-    if (target.isValueless()) {
-        event[EVENT_ATTR_RESOLVE_CB] && event[EVENT_ATTR_RESOLVE_CB]();
-        return;
-    }
-
-    let { valueBag } = details;
-    if (!valueBag) {
-        valueBag = {};
-        valueBag[target.getName()] = value;
-    }
-    root.values = merge.recursive(true, root.values, valueBag);
-    event[EVENT_ATTR_RESOLVE_CB] && event[EVENT_ATTR_RESOLVE_CB]();
-}
-
-function onNewValueDefault(event, details) {
-    const { target, payload } = event;
-    let { valueBag } = details;
-    target.setValue(payload, function() {
-        if (event[EVENT_ATTR_RESOLVE_CB]) event[EVENT_ATTR_RESOLVE_CB]();
-    });
-    const root = target.getRoot();
-    if (!valueBag) {
-        valueBag = {};
-        valueBag[target.getName()] = payload;
-    }
-    root.values = merge.recursive(true, root.values, valueBag);
-}
-
-function onStateChangedDefault(event, details) {
-    const { target, payload } = event;
-    target._setState(payload, function() {
-        if (event[EVENT_ATTR_RESOLVE_CB]) event[EVENT_ATTR_RESOLVE_CB]();
-    });
-}
-
-function onResetDefault(event, details) {
-    const { target } = event;
-    const root = target.getRoot();
-    root.registeredElements.forEach(el => el.reset());
-}
-
-// default event handlers
-export const defaultBehaviourMap = {
-    [EVENT_TYPE_REGISTER]: onRegisterDefault,
-    [EVENT_TYPE_NEW_VALUE]: onNewValueDefault,
-    //[EVENT_TYPE_VALUE_CHANGED]: onValueChangedDefault,
-    [EVENT_TYPE_STATE_CHANGED]: onStateChangedDefault,
-    [EVENT_TYPE_RESET]: onResetDefault
+    [type.REGISTER]: "onRegister",
+    [type.VALUE_CHANGED]: "onValueChanged",
+    [type.NEW_VALUE]: "onNewValue",
+    [type.STATE_CHANGED]: "onStateChanged",
+    [type.CLEAR_ERRORS]: "onClearErrors",
+    [type.RESET]: "onReset",
+    [type.FINALIZE]: "onFinalize"
 };
 
 export function defaultIsPrevented(event) {
-    return event[EVENT_ATTR_PREVENT_DEFAULT];
+    return event[attr.PREVENT_DEFAULT];
 }
 
 export function isBubblingStopped(event) {
-    return event[EVENT_ATTR_STOP_BUBBLING];
+    return event[attr.STOP_BUBBLING];
 }
 
 /**
@@ -139,35 +54,35 @@ export function isBubblingStopped(event) {
  * @param type
  * @param propName name of component event handler
  */
-export function registerNewEvent(type, propName, defaultBehaviour = null) {
+export function registerNewEvent(type, listenerName, defaultBehaviour = null) {
     invariant(
         !eventTypeToPropNameMap.hasOwnProperty(type),
-        "Event %s already registered",
+        "Event type %s already registered",
         type
     );
-    eventTypeToPropNameMap[type] = propName;
+    eventTypeToPropNameMap[type] = listenerName;
 }
 
 export function addEventListener(event, node, handler, capture = false) {}
 
 function stopBubbling() {
-    this[EVENT_ATTR_STOP_BUBBLING] = true;
+    this[attr.STOP_BUBBLING] = true;
 }
 
 function preventDefault() {
-    this[EVENT_ATTR_PREVENT_DEFAULT] = true;
+    this[attr.PREVENT_DEFAULT] = true;
 }
 
 function getCreatedAt() {
-    return this[EVENT_ATTR_CREATED_AT];
+    return this[attr.CREATED_AT];
 }
 
 function getResults() {
-    return this[EVENT_ATTR_RESULTS];
+    return this[attr.RESULTS];
 }
 
 function getLastResult() {
-    const results = this[EVENT_ATTR_RESULTS];
+    const results = this[attr.RESULTS];
 
     return results.length ? results[results.length - 1] : null;
 }
@@ -177,7 +92,7 @@ function getLastResult() {
  * @param result
  */
 function addResult(result) {
-    this[EVENT_ATTR_RESULTS].push(result);
+    this[attr.RESULTS].push(result);
 }
 
 export function cloneEvent(event) {
@@ -191,11 +106,11 @@ export function createEvent(type, payload, { onDiscard } = {}) {
         type,
         payload,
         currentNode: this,
-        [EVENT_ATTR_CREATED_AT]: Date.now(),
-        [EVENT_ATTR_PREVENT_DEFAULT]: false,
-        [EVENT_ATTR_STOP_BUBBLING]: false,
-        [EVENT_ATTR_RESULTS]: [],
-        [EVENT_ATTR_DISCARD_CB]: function() {
+        [attr.CREATED_AT]: Date.now(),
+        [attr.PREVENT_DEFAULT]: false,
+        [attr.STOP_BUBBLING]: false,
+        [attr.RESULTS]: [],
+        [attr.DISCARD_CB]: function() {
             onDiscard && onDiscard();
         },
         preventDefault,
@@ -206,84 +121,16 @@ export function createEvent(type, payload, { onDiscard } = {}) {
     };
 }
 
-function eventFilter(event, filter) {
+export function eventFilter(event, filter) {
     const { target, type } = event;
 
-    if (filter.type && type !== filter.type) return false;
+    if (filter.type && type !== filter.type)
+        return false;
 
-    if (filter.targetName && filter.targetName != target.getName()) return false;
+    if (filter.targetName && filter.targetName != target.getName())
+        return false;
 
     return true;
-}
-
-function debouncePm(duration, event) {
-    return () => {
-        let timeout = null;
-        let lastReject = null;
-        return () =>
-            new Promise(function(resolve, reject) {
-                if (timeout) {
-                    clearTimeout(timeout);
-                    lastReject(event);
-                }
-                lastReject = reject;
-                timeout = setTimeout(function() {
-                    resolve(event);
-                    timeout = null;
-                }, duration);
-            });
-    };
-}
-
-function throttlePm(duration, event) {
-    return () => {
-        let wait = false;
-        const clonedEvent = cloneEvent(event);
-        return () =>
-            new Promise(function(resolve, reject) {
-                if (!wait) {
-                    resolve(clonedEvent);
-                    wait = true;
-                    setTimeout(function() {
-                        wait = false;
-                    }, duration);
-                } else reject(clonedEvent);
-            });
-    };
-}
-
-function throttleDebouncePm(event, pmGenerator, nodeId, map, specs) {
-    if (!Array.isArray(specs))
-        specs = [specs];
-
-    const promises = [];
-    specs.forEach(spec => {
-        const { filter, duration } = spec;
-
-        if (!eventFilter(event, filter))
-            return;
-
-        if (spec.onDiscard)
-            event[EVENT_ATTR_DISCARD_CB] = spec.onDiscard;
-
-        let nodeMap;
-        if (!map.has(nodeId)) {
-            nodeMap = new Map();
-            map.set(nodeId, nodeMap);
-        } else
-            nodeMap = map.get(nodeId);
-
-        let pm;
-        if (nodeMap.has(filter)) {
-            pm = nodeMap.get(filter);
-        } else {
-            pm = pmGenerator(duration, event)();
-            nodeMap.set(filter, pm);
-        }
-        promises.push(pm());
-    });
-
-    return Promise.all(promises);
 }
 
 export function promisifyHandler(handler) {
@@ -325,33 +172,6 @@ async function invokeNodeEventHandler(node, handler, options, event, details) {
     } else {
         return invoke();
     }
-}
-
-function getDebounceThrottlePromise(event) {
-    const { currentNode } = event;
-    const { debounce, throttle } = currentNode.props;
-
-    invariant(
-        !(debounce && throttle),
-        "debounce and throttle properties are mutually exclusive"
-    );
-
-    if (debounce)
-        return throttleDebouncePm(
-            event,
-            debouncePm,
-            currentNode.getId(),
-            debounceEventMap,
-            debounce
-        );
-    else if (throttle)
-        return throttleDebouncePm(
-            event,
-            throttlePm,
-            currentNode.getId(),
-            throttleEventMap,
-            throttle
-        );
 }
 
 function getEventDetails(target) {
@@ -414,10 +234,6 @@ async function capturePhase(target, event, details, forceSync = false) {
     return Promise.all(promises);
 }
 
-function thread(cb) {
-    setTimeout(cb, 0);
-}
-
 async function invokeNodeEventHandlers(node, event, details) {
     // Invoke runtime event hadnlers
     const promises = [];
@@ -445,7 +261,7 @@ async function invokeNodeEventHandlers(node, event, details) {
             await Promise.all(promises);
         } catch (e) {
             console.log("cought error2", e);
-            event[EVENT_ATTR_DISCARD_CB](e); // Pass event
+            event[attr.DISCARD_CB](e); // Pass event
             throw e;
         }
     }
@@ -462,7 +278,7 @@ async function bubblePhase(target, event, details, forceSync = false) {
             try {
                 await debounceThrottlePm;
             } catch (e) {
-                event[EVENT_ATTR_DISCARD_CB](e); // Pass event
+                event[attr.DISCARD_CB](e); // Pass event
                 return Promise.resolve(false);
             }
 
@@ -480,12 +296,13 @@ export async function dispatch(target, event, suppressDiscarded = true) {
     const details = getEventDetails(target);
     const root = target.getRoot();
     try {
-        await invokeEventHandlerByName(root, EVENT_HANDLER_ON_PROPAGATION_STARTED, event, details);
+        await invokeEventHandlerByName(root, listener.ON_PROPAGATION_STARTED, event, details);
         await capturePhase(target, event, details);
         await bubblePhase(target, event, details);
-        invokeDefaultEventHandler.call(root, event, details);
-        await invokeEventHandlerByName(root, EVENT_HANDLER_ON_PROPAGATION_FINISHED, event, details);
+        invokeDefaultEventHandler(event, details);
+        await invokeEventHandlerByName(root, listener.ON_PROPAGATION_FINISHED, event, details);
     } catch (e) {
+        console.log(e)
         if (suppressDiscarded)
             return Promise.resolve(false);
         else
@@ -493,12 +310,4 @@ export async function dispatch(target, event, suppressDiscarded = true) {
     }
 
     return Promise.resolve(true);
-}
-
-export function invokeDefaultEventHandler(event, details) {
-    const { type } = event;
-    const defaultBehaviour = defaultBehaviourMap[type];
-
-    if (defaultBehaviour && ! defaultIsPrevented(event))
-        defaultBehaviour(event, details);
 }

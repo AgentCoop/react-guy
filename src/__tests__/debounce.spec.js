@@ -3,9 +3,10 @@ import {fireEvent, render} from '@testing-library/react';
 
 import {
     Composer,
-    ElementGroup,
-    EVENT_TYPE_FINALIZE, EVENT_TYPE_VALUE_CHANGED
+    ElementGroup
 } from '../index';
+
+import * as eventType from '../eventType';
 
 import Submit from "./Base/Submit";
 import Email from "./Fields/Email";
@@ -17,13 +18,13 @@ it('should debounce 3 events and handle 1', async () => {
     const debounceSubmitSpec = {
         duration: 50,
         onDiscard: onSubmitDiscarded,
-        filter: { type: EVENT_TYPE_FINALIZE }
+        filter: { type: eventType.FINALIZE }
     };
 
     const debounceInputSpec = {
         duration: 50,
         onDiscard: onInputDiscarded,
-        filter: { type: EVENT_TYPE_VALUE_CHANGED }
+        filter: { type: eventType.VALUE_CHANGED }
     };
 
     const { getByText, getByLabelText } = render(
@@ -31,9 +32,9 @@ it('should debounce 3 events and handle 1', async () => {
             initialValues={{}}
             onPropagationFinished={function(e) {
                 const { type } = e;
-                if (type === EVENT_TYPE_FINALIZE)
+                if (type === eventType.FINALIZE)
                     expect(onSubmitDiscarded).toHaveBeenCalledTimes(3);
-                if (type === EVENT_TYPE_VALUE_CHANGED)
+                if (type === eventType.VALUE_CHANGED)
                     expect(onInputDiscarded).toHaveBeenCalledTimes(9);
             }}
         >
