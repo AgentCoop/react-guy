@@ -3,7 +3,7 @@ import invariant from "invariant";
 
 import Collection from "./Collection";
 import AsyncHandler from "./AsyncHandler";
-import invokeDefaultEventHandler from './defaultBehaviour';
+import invokeDefaultAction from './defaultAction';
 import getDebounceThrottlePromise from './debounceThrottle';
 
 import * as type from './eventType';
@@ -308,7 +308,11 @@ export async function dispatch(target, event, suppressErrors = true) {
         await invokeEventHandlerByName(root, listener.ON_PROPAGATION_STARTED, event, details);
         await capturePhase(target, event, details);
         await bubblePhase(target, event, details);
-        invokeDefaultEventHandler(event, details);
+
+        // Invoke default action if necessary
+        if (!event[attr.PREVENT_DEFAULT])
+            invokeDefaultAction(event, details);
+
         await invokeEventHandlerByName(root, listener.ON_PROPAGATION_FINISHED, event, details);
     } catch (e) {
         if (suppressErrors)

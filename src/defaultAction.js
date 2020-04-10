@@ -58,25 +58,25 @@ function onResetDefault(event, details) {
     root.registeredElements.forEach(el => el.reset());
 }
 
-const defaultBehaviourMap = new Map();
+const defaultActionMap = new Map();
 
-addNewDefaultBehaviour(type.REGISTER, onRegisterDefault);
-addNewDefaultBehaviour(type.NEW_VALUE, onNewValueDefault);
-addNewDefaultBehaviour(type.STATE_CHANGED, onStateChangedDefault);
-addNewDefaultBehaviour(type.RESET, onResetDefault);
+addNewDefaultAction(type.REGISTER, onRegisterDefault);
+addNewDefaultAction(type.NEW_VALUE, onNewValueDefault);
+addNewDefaultAction(type.STATE_CHANGED, onStateChangedDefault);
+addNewDefaultAction(type.RESET, onResetDefault);
 
-export function addNewDefaultBehaviour(eventType, handler) {
-    invariant(!defaultBehaviourMap.has(eventType),
+export function addNewDefaultAction(eventType, handler) {
+    invariant(!defaultActionMap.has(eventType),
         'Default behaviour for the event %s is already registered',
         eventType
     );
 
-    defaultBehaviourMap.set(eventType, handler);
+    defaultActionMap.set(eventType, handler);
 }
 
-export default function invokeDefaultEventHandler(event, details) {
+export default function invokeDefaultAction(event, details) {
     const { type, target } = event;
-    const defaultBehaviour = defaultBehaviourMap.get(type);
-    if (defaultBehaviour && ! defaultIsPrevented(event))
-        defaultBehaviour.call(target.getRoot(), event, details);
+    const action = defaultActionMap.get(type);
+    if (action && ! defaultIsPrevented(event))
+        action.call(target.getRoot(), event, details);
 }
