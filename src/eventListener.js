@@ -11,5 +11,9 @@ export const ON_ASYNC_VALIDATE_STARTED                = "onAsyncValidationStarte
 export const ON_ASYNC_VALIDATE_FAILED                 = "onAsyncValidationFailed";
 export const ON_ASYNC_VALIDATE_FINISHED               = "onAsyncValidationFinished";
 
+export const ON_FORK_STARTED                          = "onForkStarted";
+export const ON_FORK_FAILED                           = "onForkFailed";
+export const ON_FORK_FINISHED                         = "onForkFinished";
+
 export const ON_VALIDATION_FAILED                     = 'onValidationFailed';
 export const ON_VALUE_CHANGED                         = "onValueChanged";

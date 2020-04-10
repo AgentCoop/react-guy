@@ -7,6 +7,8 @@ import {
     EVENT_HANDLER_ON_ASYNC_HANDLER_FINISHED
 } from "./events";
 
+import * as listener from './eventListener';
+
 import {fork} from "./utils";
 
 class AsyncHandler {
@@ -17,32 +19,51 @@ class AsyncHandler {
 
     runBody = async (node, event, details) => {
         try {
-            invokeSyncEventHandlerByName(node, EVENT_HANDLER_ON_ASYNC_HANDLER_STARTED, event, details);
+            invokeSyncEventHandlerByName(node, listener.ON_ASYNC_HANDLER_STARTED, event, details);
             const result = await this.handler(event, details);
-            invokeSyncEventHandlerByName(node, EVENT_HANDLER_ON_ASYNC_HANDLER_FINISHED, event, details);
+            invokeSyncEventHandlerByName(node, listener.ON_ASYNC_HANDLER_FINISHED, event, details);
             return result;
         } catch (e) {
-            invokeSyncEventHandlerByName(node, EVENT_HANDLER_ON_ASYNC_HANDLER_FAILED, event, details);
+            invokeSyncEventHandlerByName(node, listener.ON_ASYNC_HANDLER_FAILED, event, details);
             throw e;
         }
     }
 
     run = (node, event, details) => {
         const self = this;
-        if (this.fork) {
-            const clonedEvent = cloneEvent(event);
-            fork(() => {
-                self.runBody(clonedEvent, details);
-            });
-        } else {
+        async function run(event, onSuccess = null, onFailure = null) {
             return new Promise(async function (resolve, reject) {
                 try {
                     const result = await self.runBody(node, event, details);
-                    resolve({ node, result });
+                    const _result = { node, result };
+                    if (onSuccess)
+                        onSuccess(_result);
+                    resolve();
                 } catch (e) {
-                    reject({ node, result: e });
+                    const result = { node, result: e };
+                    if (onFailure)
+                        onFailure(result, { resolve, reject });
+                    else
+                        reject({ node, result: e });
                 }
             });
+        };
+
+        if (this.fork) {
+            const clonedEvent = cloneEvent(event);
+            fork(() => {
+                function onSuccess(result) {
+                    invokeSyncEventHandlerByName(node, listener.ON_FORK_FINISHED, event, details);
+                }
+                function onFailure(result, { resolve, reject }) {
+                    invokeSyncEventHandlerByName(node, listener.ON_FORK_FAILED, event, details);
+                    resolve();
+                }
+                invokeSyncEventHandlerByName(node, listener.ON_FORK_STARTED, event, details);
+                run(clonedEvent, onSuccess, onFailure);
+            });
+        } else {
+            return run(event);
         }
     }
 }

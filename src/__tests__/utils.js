@@ -1,3 +1,4 @@
+import {EMAIL_VALUE} from './Fields/Email';
 
 export function delay(time) {
     return new Promise(function(resolve) {
@@ -7,5 +8,5 @@ export function delay(time) {
     });
 }
 
-export const EVENT_CHANGE_EMAIL_VALUE = { target: { value: 'john.doe@gmail.com' } };
+export const EVENT_CHANGE_EMAIL_VALUE = { target: { value: EMAIL_VALUE } };
 export const EVENT_CHANGE_INVALID_EMAIL_VALUE = { target: { value: 'foo' } };
