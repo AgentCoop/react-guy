@@ -1,13 +1,15 @@
 import React from "react";
 
-import Input from '../Base/Input';
+import Input from '../../Foundation/Input';
 
 export default function(props) {
     return (
         <Input
             {...props}
             name={"password"}
-            label={"Password"}
+            renderProps={{
+                prependProps: { label: "Password" }
+            }}
             type={"password"}
         />
     );

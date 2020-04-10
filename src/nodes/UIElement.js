@@ -9,6 +9,7 @@ import { NODE_TYPE_UI_ELEMENT } from "../events";
 import * as type from '../eventType';
 
 const EL_PREV_VALUE = Symbol("el_prev_value");
+const ATTR_INITIAL_VALUE = Symbol("attr_initial_value");
 
 class UIElement extends AbstractNode {
     constructor(props) {
@@ -17,10 +18,9 @@ class UIElement extends AbstractNode {
         this.$type = NODE_TYPE_UI_ELEMENT;
 
         if (!this.isValueless()) {
-            this.state.value =
-                typeof initialValues[name] !== "undefined"
-                    ? initialValues[name]
-                    : defaultValue;
+            const initialValue = typeof initialValues[name] !== "undefined" ? initialValues[name] : defaultValue;
+            this.state.value = initialValue;
+            this[ATTR_INITIAL_VALUE] = initialValue;
         } else {
             this.state.value = defaultValue;
             this[EL_PREV_VALUE] = null;
@@ -46,6 +46,10 @@ class UIElement extends AbstractNode {
             domNode,
             value: this.state.value
         });
+    };
+
+    getInitialValue = () => {
+        return this[ATTR_INITIAL_VALUE];
     };
 
     getValue = () => {

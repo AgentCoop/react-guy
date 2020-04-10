@@ -1,6 +1,6 @@
 import React from "react";
 
-import Input from "../Base/Input";
+import Input from "../../Foundation/Input";
 
 export default function Login(props) {
     return (
@@ -12,8 +12,10 @@ export default function Login(props) {
                 else
                     return true;
             }}
+            renderProps={{
+                prependProps: { label: "Email" }
+            }}
             name={"email"}
-            label={"Email"}
             type={"text"}
             {...props}
         />
