@@ -15,7 +15,6 @@ function onRegisterDefault(event, details) {
     } = event;
     const root = target.getRoot();
     root.registerElement(target);
-
     if (target.isValueless()) {
         event[attr.RESOLVE_CB] && event[attr.RESOLVE_CB]();
         return;

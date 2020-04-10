@@ -41,7 +41,7 @@ async function onFinalizeEvent(event, details) {
             validFailed = true;
         } else if (node.props.validate) { // Custom validator
             const value = node.getValue();
-            const asyncOrValue = node.props.validate(value);
+            const asyncOrValue = node.props.validate.call(node, value);
             if (asyncOrValue instanceof AsyncHandler) {
                 asyncValidatorNodes.push(node);
                 const pm = asyncOrValue.run(node, event, details);
@@ -55,7 +55,7 @@ async function onFinalizeEvent(event, details) {
     });
 
     if (validFailed)
-        return;
+        return Promise.reject(null);
 
     try {
         // onAsyncValidateStarted
@@ -77,6 +77,7 @@ async function onFinalizeEvent(event, details) {
     } catch (e) {
         const { node, result } = e;
         node.setError({ validationErr: result });
+        validFailed = true;
     } finally {
         // onAsyncVaidatorFinished
         asyncValidatorNodes.forEach(node => {
@@ -87,6 +88,8 @@ async function onFinalizeEvent(event, details) {
                 details
             );
         });
+
+        return validFailed ? Promise.reject(null) : Promise.resolve(null);
     }
 }
 
