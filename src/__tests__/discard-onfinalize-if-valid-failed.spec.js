@@ -19,6 +19,8 @@ import Email, {EmailRegExp, setNewValue} from './Fields/Email';
 
 it('should not call onFinalize if validation failed', async () => {
     const onFinalize = jest.fn();
+    const onAsyncValidFailed = jest.fn();
+    const onValidFailed = jest.fn();
     const { getByText, getByLabelText } = render(
         <Composer
             onPropagationFinished={function(event) {
@@ -31,6 +33,8 @@ it('should not call onFinalize if validation failed', async () => {
                     <Email
                         defaultValue={""}
                         required
+                        onValidationFailed={onValidFailed}
+                        onAsyncValidationFailed={onAsyncValidFailed}
                         validate={function(e) {
                             const email = this.getValue();
                             return new AsyncHandler(function(event, details, { resolve, reject }) {
@@ -68,4 +72,6 @@ it('should not call onFinalize if validation failed', async () => {
     await setNewValue(getByLabelText, EVENT_CHANGE_EMAIL_VALUE);
     await submit();
     expect(onFinalize).toHaveBeenCalledTimes(1);
+    expect(onAsyncValidFailed).toHaveBeenCalledTimes(1);
+    expect(onValidFailed).toHaveBeenCalledTimes(1);
 });

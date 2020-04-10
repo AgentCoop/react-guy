@@ -37,8 +37,8 @@ it('should validate email value using async handler', async () => {
                 <ElementGroup>
                     <Email
                         required
-                        onAsyncValidateStarted={asyncValidStarted}
-                        onAsyncValidateFinished={asyncValidFinished}
+                        onAsyncValidationStarted={asyncValidStarted}
+                        onAsyncValidationFinished={asyncValidFinished}
                         validate={function(e) {
                             return new AsyncHandler(function(event, details, { resolve, reject }) {
                                 setTimeout(function() {

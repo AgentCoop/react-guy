@@ -58,37 +58,20 @@ async function onFinalizeEvent(event, details) {
         return Promise.reject(null);
 
     try {
-        // onAsyncValidateStarted
         asyncValidatorNodes.push(this);
         asyncValidatorNodes.forEach(node => {
-            invokeSyncEventHandlerByName(
-                node,
-                listener.ON_ASYNC_VALIDATE_STARTED,
-                event,
-                details
-            );
+            invokeSyncEventHandlerByName(node, listener.ON_ASYNC_VALIDATE_STARTED, event, details);
         });
         const results = await Promise.all(promises);
-        results.forEach(({ result, node }) => {
-            if (result === true)
-                return;
-            node.setError({ validationErr: result });
+        asyncValidatorNodes.forEach(node => {
+            invokeSyncEventHandlerByName(node, listener.ON_ASYNC_VALIDATE_FINISHED, event, details);
         });
     } catch (e) {
         const { node, result } = e;
         node.setError({ validationErr: result });
+        invokeSyncEventHandlerByName(node, listener.ON_ASYNC_VALIDATE_FAILED, event, details);
         validFailed = true;
     } finally {
-        // onAsyncVaidatorFinished
-        asyncValidatorNodes.forEach(node => {
-            invokeSyncEventHandlerByName(
-                node,
-                listener.ON_ASYNC_VALIDATE_FINISHED,
-                event,
-                details
-            );
-        });
-
         return validFailed ? Promise.reject(null) : Promise.resolve(null);
     }
 }
