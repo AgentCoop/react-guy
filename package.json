@@ -1,6 +1,6 @@
 {
   "name": "react-guy-composer",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "An event-driven approach to handle components state",
   "main": "./lib/index.js",
   "module": "./es/index.js",
@@ -83,6 +83,9 @@
     "immutable": {
       "optional": true
     }
+  },
+  "exports": {
+    "./Foundation/": "./src/Foundation/"
   },
   "files": [
     "README.md",
