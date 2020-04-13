@@ -38,6 +38,23 @@ class AbstractNode extends React.Component {
             typeof props.namespace !== "undefined" ? props.namespace : null;
     }
 
+    getId = () => {
+        return this[attr.ID];
+    };
+
+    getType = () => {
+        return this.$type;
+    };
+
+    getName = (fqn = false) => {
+        if (!this[attr.NAME])
+            return null;
+        else
+            return fqn
+                ? this.getNamespace(true) + "." + this[attr.NAME]
+                : this[attr.NAME];
+    };
+
     addEventListener = (
         eventType,
         handler,
@@ -93,23 +110,6 @@ class AbstractNode extends React.Component {
             }
         }
         traverse(root);
-    };
-
-    getId = () => {
-        return this[attr.ID];
-    };
-
-    getType = () => {
-        return this.$type;
-    };
-
-    getName = (fqn = false) => {
-        if (!this[attr.NAME])
-            return null;
-        else
-            return fqn
-                ? this.getNamespace(true) + "." + this[attr.NAME]
-                : this[attr.NAME];
     };
 
     getNamespace = (fullyQualified = true) => {

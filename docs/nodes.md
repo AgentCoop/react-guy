@@ -10,7 +10,32 @@ A node representing UI interface.
 
 ##### API reference
 
+###### AbstractNode
+* getDescendantsPath
+* getAncestorsPath
+* findByClass
+* findByElementName
+* getNextSibling
+* getPrevSibling
+* getChildNodes
+* getRoot
+* getParentNode
+* getSiblings
+* getNamespace
+* addChildNode
+* traverseTree
+* getClass
+* getEventListeners
+* isStaticListenerDisabled
+* removeEventListener
+* addEventListener
+* getName
+* getType
+* getId
+
+##### UIElement
 * getState
+* setState()
 ```text
 Returns current element's state.
 ```
