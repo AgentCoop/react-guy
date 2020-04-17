@@ -1,13 +1,22 @@
+# The best pattern to follow is ignoring editor files in a global .gitignore configuration file.
+# However, in order to prevent issues, editor files are ignored here.
 .idea
 .vscode
-*.iml
-.nyc_output
-coverage
-flow-coverage
+
+*.log
+.DS_STORE
+/.eslintcache
+/docs/.next
+/.nyc_output
+/coverage
+/docs/export
+/examples/**/.cache
+/packages/material-ui-codemod/lib
+/packages/material-ui-icons/material-icons/*
+/test/regressions/screenshots
+/test/selenium-output
+/docs/tmp
+build
 node_modules
-dist
-lib
-es
-npm-debug.log
-.DS_Store
-stats.json
+package-lock.json
+size-snapshot.json
