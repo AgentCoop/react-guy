@@ -1,6 +1,6 @@
 import React from "react";
 
-import Input from "../../../../composer-foundation/Input";
+import { Input } from "../../../../composer-foundation/src";
 
 export default function(props) {
     return (

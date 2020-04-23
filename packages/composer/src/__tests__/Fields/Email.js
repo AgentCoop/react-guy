@@ -1,7 +1,7 @@
 import React from "react";
 import {fireEvent} from '@testing-library/react';
 
-import Input from "../../../../composer-foundation/Input";
+import {Input} from "../../../../composer-foundation/src";
 import {delay} from '../utils';
 
 export const EMAIL_VALUE = 'john.doe@gmail.com';
