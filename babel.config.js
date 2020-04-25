@@ -19,6 +19,7 @@ if (process.env.BABEL_ENV === 'es') {
 
 const defaultAlias = {
   '@react-guy/composer': './packages/composer/src',
+  '@react-guy/composer-foundation': './packages/composer-foundation/src'
 };
 
 const productionPlugins = [
