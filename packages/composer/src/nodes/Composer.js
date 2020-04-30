@@ -4,21 +4,16 @@ import invariant from "invariant";
 import AbstractNode from "../AbstractNode";
 import AsyncHandler from "../AsyncHandler";
 import {
-    NODE_TYPE_COMPOSER,
     valueRequired,
     isEmpty,
     invokeEventHandlerByName,
     invokeSyncEventHandlerByName,
 } from "../events";
 
-import {
-    PREV_SIBLING,
-    NEXT_SIBLING
-} from "../nodeAttr"
-
 import * as listener from '../eventListener';
 import * as type from '../eventType';
 import * as attr from '../eventAttr';
+import * as nodeAttr from '../nodeAttr';
 
 function onValueChanged(event, details) {
     const { target, payload } = event;
@@ -79,11 +74,14 @@ async function onFinalizeEvent(event, details) {
     }
 }
 
+export const TYPE = Symbol('composer');
+
 class Composer extends AbstractNode {
     constructor(props) {
         super(props);
         const { initialValues } = props;
-        this.$type = NODE_TYPE_COMPOSER;
+        this.$type = TYPE;
+        this[nodeAttr.TYPE] = TYPE;
         this.nodeContext = { initialValues };
         this.values = {};
         this.namespace = "";
@@ -101,8 +99,8 @@ class Composer extends AbstractNode {
             prevSibling,
             nextSibling
         ) {
-            current[PREV_SIBLING] = prevSibling;
-            current[NEXT_SIBLING] = nextSibling;
+            current[nodeAttr.PREV_SIBLING] = prevSibling;
+            current[nodeAttr.NEXT_SIBLING] = nextSibling;
         });
     }
 

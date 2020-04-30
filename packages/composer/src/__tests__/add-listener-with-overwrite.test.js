@@ -1,5 +1,5 @@
 import React from 'react';
-import {fireEvent, render} from '@testing-library/react';
+import { render } from '@testing-library/react';
 
 import {
     Composer,
@@ -7,8 +7,7 @@ import {
 } from '../index';
 
 import * as eventType from '../eventType';
-import Submit from './Base/Submit';
-import {delay} from './utils'
+import Submit, { submit } from './Base/Submit';
 
 const onFinalize = jest.fn();
 
@@ -34,8 +33,7 @@ it(`should call onFinalize once`, async () => {
     );
 
     for (let i = 0; i < 2; i++) {
-        fireEvent.click(getByText('Submit'));
-        await delay(10);
+        await submit(getByText);
     }
 
     expect(onFinalize).toHaveBeenCalledTimes(1);

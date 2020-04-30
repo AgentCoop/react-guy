@@ -1,5 +1,5 @@
 import React from 'react';
-import {render} from '@testing-library/react';
+import { render } from '@testing-library/react';
 
 import {
     Composer,
@@ -9,16 +9,16 @@ import {
 import AsyncHandler from "../AsyncHandler";
 
 import Submit, { submit } from './Base/Submit';
-import Email, {EMAIL_VALUE, setNewValue} from './Fields/Email';
-import {EVENT_CHANGE_EMAIL_VALUE} from './utils';
+import Email, { setNewValue } from './Fields/Email';
+import { EVENT_CHANGE_EMAIL_VALUE } from './utils';
 
-it(`should stop event propagation`, async () => {
+let forkCallTime, finalizeCallTime;
+
+it(`should fork execution of async event handler`, async () => {
     const onFinalize = jest.fn();
     const forkedHandler = jest.fn();
     const forkedFailed = jest.fn();
     const forkedFinished = jest.fn();
-
-    let forkCallTime, finalizeCallTime;
 
     const { getByText, getByLabelText } = render(
         <Composer

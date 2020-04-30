@@ -8,7 +8,7 @@ import {
 
 import * as eventType from '../eventType';
 
-import Submit from "./Base/Submit";
+import Submit, { submit } from "./Base/Submit";
 import Email from "./Fields/Email";
 
 it('should debounce 3 events and handle 1', async () => {

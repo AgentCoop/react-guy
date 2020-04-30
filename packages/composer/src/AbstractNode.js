@@ -20,6 +20,7 @@ class AbstractNode extends React.Component {
 
         // Unique integer ID, big enough to avoid possible collisions
         this[attr.ID] = parseInt(Math.random().toString().substr(2));
+        this[attr.TYPE] = nodeType;
         this[attr.NAME] = props.name ? props.name : null;
         this[attr.CHILDS] = new Map();
         this[attr.PARENT] = null;
@@ -43,7 +44,7 @@ class AbstractNode extends React.Component {
     };
 
     getType = () => {
-        return this.$type;
+        return this[attr.TYPE];
     };
 
     getName = (fqn = false) => {

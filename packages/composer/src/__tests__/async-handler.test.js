@@ -7,10 +7,9 @@ import {
     ElementGroup
 } from '../index';
 
-import {delay} from './utils';
+import { delay } from './utils';
 import * as eventType from '../eventType';
-
-import Submit from "./Base/Submit";
+import Submit, { submit } from "./Base/Submit";
 
 const TARGET_COUNT = 7;
 
@@ -58,9 +57,6 @@ it(`should propagate through all nodes ${TARGET_COUNT} times`, async () => {
         </Composer>
     );
 
-    await delay(100);
-
-    fireEvent.click(getByText('Submit'));
-
-    await delay(100);
+    await submit(getByText);
+    await delay(60);
 });

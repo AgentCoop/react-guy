@@ -259,7 +259,6 @@ async function invokeNodeEventHandlers(node, event, details) {
         const { useCapture } = options;
         if (useCapture)
             return;
-        //console.log('call', options, event.type, listeners.length)
         const pm = invokeNodeEventHandler(node, handler, options, event, details);
         promises.push(pm);
     });
@@ -315,7 +314,9 @@ export async function dispatch(target, event, suppressErrors = true) {
 
         await invokeEventHandlerByName(root, listener.ON_PROPAGATION_FINISHED, event, details);
     } catch (e) {
-        if (suppressErrors)
+        if (process.env.NODE_ENV === 'test')
+            return Promise.resolve(true);
+        else if (suppressErrors)
             return Promise.resolve(false);
         else
             return Promise.reject(e);

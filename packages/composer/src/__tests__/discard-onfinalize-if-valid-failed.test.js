@@ -14,7 +14,7 @@ import {
     EVENT_CHANGE_INVALID_EMAIL_VALUE
 } from './utils';
 
-import Submit from './Base/Submit';
+import Submit, { submit } from './Base/Submit';
 import Email, {EmailRegExp, setNewValue} from './Fields/Email';
 
 it('should not call onFinalize if validation failed', async () => {

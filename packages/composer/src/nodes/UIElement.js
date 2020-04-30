@@ -3,19 +3,19 @@ import ReactDOM from "react-dom";
 
 import AbstractNode from "../AbstractNode";
 import { ParentNodeCtx } from "../utils";
-
-import { NODE_TYPE_UI_ELEMENT } from "../events";
-
 import * as type from '../eventType';
+import * as nodeAttr from '../nodeAttr';
 
 const EL_PREV_VALUE = Symbol("el_prev_value");
 const ATTR_INITIAL_VALUE = Symbol("attr_initial_value");
+
+export const TYPE = Symbol('ui_element');
 
 class UIElement extends AbstractNode {
     constructor(props) {
         super(props);
         const { name, defaultValue, defaultState = {}, initialValues } = props;
-        this.$type = NODE_TYPE_UI_ELEMENT;
+        this[nodeAttr.TYPE] = TYPE;
 
         if (!this.isValueless()) {
             const initialValue = typeof initialValues[name] !== "undefined" ? initialValues[name] : defaultValue;

@@ -6,12 +6,14 @@ import {
     namespacedValue
 } from "../utils";
 
-import { NODE_TYPE_UI_ELEMENT_GROUP } from "../events";
+import * as nodeAttr from '../nodeAttr';
+
+export const TYPE = Symbol('ui_element_group');
 
 class ElementGroup extends AbstractNode {
     constructor(props) {
         super(props);
-        this.$type = NODE_TYPE_UI_ELEMENT_GROUP;
+        this[nodeAttr.TYPE] = TYPE;
     }
 
     patchValueBag = (event, details, value) => {
@@ -31,7 +33,8 @@ class ElementGroup extends AbstractNode {
     onNewValue = (event, details) => {
         const { onNewValue } = this.props;
         this.patchValueBag(event, details, event.payload);
-        if (onNewValue) return onNewValue(event, details);
+        if (onNewValue)
+            return onNewValue(event, details);
     };
 
     onRegister = (event, details) => {
@@ -44,10 +47,11 @@ class ElementGroup extends AbstractNode {
     };
 
     render() {
-        const { children, namespace, renderElementWrapper } = this.props;
+        const { children, namespace, renderElementWrapper, ...rest } = this.props;
         const renderProps = {
             ChildComponent: children,
-            parentContext: { renderElementWrapper, namespace }
+            parentContext: { renderElementWrapper, namespace },
+            ...rest
         };
         if (namespace && namespace.length) {
             const { initialValues } = this.context;
