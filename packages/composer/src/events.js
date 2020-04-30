@@ -307,8 +307,7 @@ export async function dispatch(target, event, suppressErrors = true) {
         await invokeEventHandlerByName(root, listener.ON_PROPAGATION_STARTED, event, details);
         await capturePhase(target, event, details);
         await bubblePhase(target, event, details);
-
-        // Invoke default action if necessary
+        // Default action
         if (!event[attr.PREVENT_DEFAULT])
             invokeDefaultAction(event, details);
 

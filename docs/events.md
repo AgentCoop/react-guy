@@ -2,13 +2,13 @@
 
 ### List of events
 
-| Type                       | Property name        |  Context      |
+| Type                       | Property name        |  Node      |
 | -------------------------- | :---------: |:--------------:
-| [REGISTER](#register-event)      | onRegister        |        |
-| STATE_CHANGED                 | onStateChanged        |             |
-| VALUE_CHANGED             | onValueChanged        |        |
-| NEW_VALUE             | onNewValue        |        |
-| FINALIZE                    | onFinalize        |        |
+| [REGISTER](#register-event)      | onRegister        |   Any     |
+| STATE_CHANGED                 | onStateChanged        |   Any          |
+| VALUE_CHANGED             | onValueChanged        |    Any    |
+| NEW_VALUE                 | onNewValue        |    Any    |       |
+| FINALIZE                    | onFinalize        |     Any   |
 | RESET          | onReset        |        |
 
 

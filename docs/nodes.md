@@ -7,6 +7,17 @@ An auxiliary node being used for grouping and decorating of UI elements.
 
 ## UIElement
 A node representing UI interface.
+```javascript
+import {UIElement} from "@react-guy/composer";
+...
+    <UIElement {...elementProps}>
+        {({ value, state, errors, dispatch }) => {
+            return (
+                <div />
+            );
+        }}
+    </UIElement>
+```
 
 ##### API reference
 

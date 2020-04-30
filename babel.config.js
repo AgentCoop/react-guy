@@ -37,7 +37,7 @@ const productionPlugins = [
 module.exports = {
   presets: defaultPresets.concat(['@babel/preset-react']),
   plugins: [
-    'babel-plugin-optimize-clsx',
+    //'babel-plugin-optimize-clsx',
     ['@babel/plugin-proposal-class-properties', { loose: true }],
     ['@babel/plugin-proposal-object-rest-spread', { loose: true }],
     // any package needs to declare 7.4.4 as a runtime dependency. default is ^7.0.0
