@@ -2,7 +2,12 @@
 
 **React-Guy-Composer** is a library that allows you to manage state of your components using an event-driven approach.
 Handle form data, and change state of nested components in an easy and predictable way.
-<br><br><br>
+<br><br>
+
+## Installation
+```bash
+npm install --save @react-guy/composer
+```
 
 ## Documentation
 
